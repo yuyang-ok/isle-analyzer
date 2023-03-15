@@ -1,7 +1,7 @@
 pub mod context;
-use context::*;
 use crossbeam::channel::bounded;
 use crossbeam::channel::select;
+use isle_analyzer::context::Context;
 use log::*;
 use lsp_types::notification::Notification;
 use lsp_types::*;
@@ -27,7 +27,6 @@ pub fn init_log() {
         .map(|()| log::set_max_level(log::LevelFilter::Error))
         .unwrap()
 }
-
 use lsp_server::*;
 
 fn main() {
@@ -80,25 +79,25 @@ fn main() {
         selection_range_provider: None,
         hover_provider: Some(HoverProviderCapability::Simple(true)),
         // The server provides completions as a user is typing.
-        completion_provider: Some(CompletionOptions {
-            resolve_provider: None,
-            trigger_characters: Some({
-                let mut c = vec![":".to_string(), ".".to_string()];
-                for x in 'a'..='z' {
-                    c.push(String::from(x as char));
-                }
-                for x in 'A'..='Z' {
-                    c.push(String::from(x as char));
-                }
-                c.push(String::from("0"));
-                c
-            }),
-            all_commit_characters: None,
-            work_done_progress_options: WorkDoneProgressOptions {
-                work_done_progress: None,
-            },
-            completion_item: None,
-        }),
+        // completion_provider: Some(CompletionOptions {
+        //     resolve_provider: None,
+        //     trigger_characters: Some({
+        //         let mut c = vec![":".to_string(), ".".to_string()];
+        //         for x in 'a'..='z' {
+        //             c.push(String::from(x as char));
+        //         }
+        //         for x in 'A'..='Z' {
+        //             c.push(String::from(x as char));
+        //         }
+        //         c.push(String::from("0"));
+        //         c
+        //     }),
+        //     all_commit_characters: None,
+        //     work_done_progress_options: WorkDoneProgressOptions {
+        //         work_done_progress: None,
+        //     },
+        //     completion_item: None,
+        // }),
         definition_provider: Some(OneOf::Left(true)),
         type_definition_provider: Some(TypeDefinitionProviderCapability::Simple(true)),
         references_provider: Some(OneOf::Left(true)),
