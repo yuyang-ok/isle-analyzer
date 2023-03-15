@@ -1,4 +1,3 @@
-use clap::*;
 pub mod context;
 use context::*;
 use crossbeam::channel::bounded;
@@ -8,6 +7,7 @@ use lsp_types::notification::Notification;
 use lsp_types::*;
 use std::path::*;
 use std::sync::{Arc, Mutex};
+
 struct SimpleLogger;
 impl log::Log for SimpleLogger {
     fn enabled(&self, metadata: &Metadata) -> bool {
@@ -30,14 +30,10 @@ pub fn init_log() {
 
 use lsp_server::*;
 
-#[derive(Parser)]
-#[clap(author, version, about)]
-struct Options {}
-
 fn main() {
-    // For now, move-analyzer only responds to options built-in to clap,
-    // such as `--help` or `--version`.
-    Options::parse();
+    for _args in std::env::args().into_iter() {
+        // todo handle this.
+    }
     init_log();
     // stdio is used to communicate Language Server Protocol requests and responses.
     // stderr is used for logging (and, when Visual Studio Code is used to communicate with this

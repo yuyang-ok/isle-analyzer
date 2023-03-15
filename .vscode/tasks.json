@@ -1,33 +1,23 @@
+// This file define "tasks" that automate parts of a programmer's workflow when
+// developing the Visual Studio Code extension in this repository. See
+// https://go.microsoft.com/fwlink/?LinkId=733558 for documentation.
 {
-	"version": "2.0.0",
-	"tasks": [
-		{
-			"type": "npm",
-			"script": "compile",
-			"group": "build",
-			"presentation": {
-				"panel": "dedicated",
-				"reveal": "never"
-			},
-			"problemMatcher": [
-				"$tsc"
-			]
-		},
-		{
-			"type": "npm",
-			"script": "watch",
-			"isBackground": true,
-			"group": {
-				"kind": "build",
-				"isDefault": true
-			},
-			"presentation": {
-				"panel": "dedicated",
-				"reveal": "never"
-			},
-			"problemMatcher": [
-				"$tsc-watch"
-			]
-		}
-	]
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Pretest",
+            "group": "build",
+            "isBackground": false,
+            "type": "npm",
+            "script": "pretest",
+            "path": "editors/code/",
+            "problemMatcher": {
+                "base": "$tsc",
+                "fileLocation": [
+                    "relative",
+                    "${workspaceFolder}/editors/code/"
+                ]
+            }
+        }
+    ]
 }
