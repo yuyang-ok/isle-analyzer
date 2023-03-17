@@ -6,6 +6,7 @@ use cranelift_isle::parser::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
+use std::collections::HashSet;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
@@ -17,18 +18,42 @@ pub struct Project {
 }
 
 impl Project {
-    fn new(
+    pub fn empty() -> Self {
+        Self {
+            defs: Defs {
+                defs: Default::default(),
+                filenames: Default::default(),
+                file_texts: Default::default(),
+            },
+            token_length: Default::default(),
+            globals: Default::default(),
+        }
+    }
+
+    pub fn from_walk() -> Result<Self, cranelift_isle::error::Errors> {}
+    pub fn new(
         paths: impl IntoIterator<Item = PathBuf>,
     ) -> Result<Self, cranelift_isle::error::Errors> {
         let files: Vec<PathBuf> = paths.into_iter().collect();
         let l = Lexer::from_files(files.clone())?;
         let token_length = TokenLength::new(l.clone())?;
         let defs = parse(l)?;
-        Ok(Self {
+        let x = Self {
             defs,
             token_length,
             globals: Globals::new(),
-        })
+        };
+        let mut dummy = DummyHandler {};
+        x.run_full_visitor(&mut dummy);
+        Ok(x)
+    }
+
+    pub fn run_visitor_for_file(&self, p: &PathBuf, handler: &mut dyn ItemOrAccessHandler) {
+        unimplemented!()
+    }
+    pub fn run_full_visitor(&self, handler: &mut dyn ItemOrAccessHandler) {
+        let provider = ProjectAstProvider::new(self);
+        self.visit(provider, handler);
     }
 }
 
@@ -138,9 +163,9 @@ impl Project {
 
 pub trait ItemOrAccessHandler {
     /// Handle this item.
-    fn handle_item_or_access(&mut self, p: &Project, _item: &ItemOrAccess) {}
+    fn handle_item_or_access(&mut self, p: &Project, _item: &ItemOrAccess);
 
-    fn visit_fun_or_spec_body(&self) -> bool;
+    fn visit_body(&self) -> bool;
 
     /// Visitor should finished.
     fn finished(&self) -> bool;
@@ -237,38 +262,53 @@ impl TokenLength {
     fn new(mut l: Lexer) -> Result<Self, cranelift_isle::error::Errors> {
         let mut ret = Self::default();
         while let Some((pos, t)) = l.next()? {
-            ret.pos.insert(
-                pos,
-                match t {
-                    Token::LParen => 1,
-                    Token::RParen => 1,
-                    Token::Symbol(x) => x.len(),
-                    Token::Int(_) => 0, //  no IDE support on this.
-                    Token::At => 1,
-                },
-            );
+            ret.pos.insert(pos, Self::t_len(&t));
         }
         Ok(ret)
+    }
+    fn t_len(t: &Token) -> usize {
+        match t {
+            Token::LParen => 1,
+            Token::RParen => 1,
+            Token::Symbol(x) => x.len(),
+            Token::Int(_) => 0, //  no IDE support on this.
+            Token::At => 1,
+        }
     }
 
     pub(crate) fn update_token_length(
         &mut self,
         file_index: usize,
-        context: &str,
+        content: &str,
     ) -> Result<(), Errors> {
-        unimplemented!()
+        let mut del = HashSet::new();
+        self.pos.keys().for_each(|k| {
+            if k.file == file_index {
+                del.insert(k.clone());
+            }
+        });
+        for d in del {
+            self.pos.remove(&d);
+        }
+        let mut l = Lexer::from_str(content, "")?;
+        while let Some((mut pos, t)) = l.next()? {
+            pos.file = file_index;
+            self.pos.insert(pos, Self::t_len(&t));
+        }
+        Ok(())
     }
 }
 
 struct DummyHandler {}
 
 impl ItemOrAccessHandler for DummyHandler {
-    fn visit_fun_or_spec_body(&self) -> bool {
+    fn visit_body(&self) -> bool {
         false
     }
     fn finished(&self) -> bool {
         false
     }
+    fn handle_item_or_access(&mut self, _p: &Project, _item: &ItemOrAccess) {}
 }
 
 pub(crate) fn get_patter_target(p: &Pattern) -> Option<&String> {

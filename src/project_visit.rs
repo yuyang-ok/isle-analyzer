@@ -3,11 +3,7 @@ use super::project::*;
 use cranelift_isle::ast::*;
 
 impl Project {
-    pub(crate) fn visit(
-        &mut self,
-        provider: impl AstProvider,
-        handler: &mut dyn ItemOrAccessHandler,
-    ) {
+    pub(crate) fn visit(&self, provider: impl AstProvider, handler: &mut dyn ItemOrAccessHandler) {
         provider.with_pragma(|_| {
             // Nothing here,
         });

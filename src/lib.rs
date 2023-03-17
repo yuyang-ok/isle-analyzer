@@ -1,5 +1,11 @@
+pub mod completion;
 pub mod context;
+pub mod document_symbol;
+pub mod goto_definition;
+pub mod hover;
 pub mod item;
 pub mod project;
 pub mod project_visit;
+pub mod references;
 pub mod types;
+pub mod utils;

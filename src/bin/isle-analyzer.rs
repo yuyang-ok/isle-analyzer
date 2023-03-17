@@ -1,9 +1,16 @@
-pub mod context;
 use crossbeam::channel::bounded;
 use crossbeam::channel::select;
-use isle_analyzer::context::Context;
+
+use isle_analyzer::context::*;
+use isle_analyzer::document_symbol;
+use isle_analyzer::goto_definition;
+use isle_analyzer::hover;
+use isle_analyzer::project::Project;
+use isle_analyzer::references;
+
 use log::*;
 use lsp_types::notification::Notification;
+use lsp_types::request::Request;
 use lsp_types::*;
 use std::path::*;
 use std::sync::{Arc, Mutex};
@@ -47,7 +54,10 @@ fn main() {
     );
 
     let (connection, io_threads) = Connection::stdio();
-    let mut context = Context { connection };
+    let mut context = Context {
+        connection,
+        project: Project::empty(),
+    };
     let (id, _client_response) = context
         .connection
         .initialize_start()
@@ -159,9 +169,22 @@ fn main() {
     log::error!("Shut down language server '{}'.", exe);
 }
 
-fn on_request(context: &mut Context, request: &Request) {
+fn on_request(context: &mut Context, request: &lsp_server::Request) {
     log::info!("receive method:{}", request.method.as_str());
     match request.method.as_str() {
+        // lsp_types::request::Completion::METHOD => on_completion_request(context, request),
+        lsp_types::request::GotoDefinition::METHOD => {
+            goto_definition::on_go_to_def_request(context, request);
+        }
+        lsp_types::request::References::METHOD => {
+            references::on_references_request(context, request);
+        }
+        lsp_types::request::HoverRequest::METHOD => {
+            hover::on_hover_request(context, request);
+        }
+        lsp_types::request::DocumentSymbolRequest::METHOD => {
+            document_symbol::on_document_symbol_request(context, request);
+        }
         _ => log::error!("handle request '{}' from client", request.method),
     }
 }
