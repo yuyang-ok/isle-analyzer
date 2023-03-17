@@ -19,7 +19,6 @@ pub fn on_references_request(context: &mut Context, request: &Request) {
     let include_declaration = parameters.context.include_declaration;
     // first find definition.
     let mut goto_definition = goto_definition::Handler::new(fpath.clone(), line, col);
-
     context
         .project
         .run_visitor_for_file(&fpath.to_file_path().unwrap(), &mut goto_definition);

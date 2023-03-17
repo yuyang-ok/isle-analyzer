@@ -1,10 +1,8 @@
 use super::context::Context;
 use super::goto_definition;
 use super::item::*;
-use super::utils::*;
 use lsp_server::*;
 use lsp_types::*;
-use std::path::PathBuf;
 
 /// Handles hover request of the language server.
 pub fn on_hover_request(context: &Context, request: &Request) {

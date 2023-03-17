@@ -7,6 +7,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 use std::collections::HashSet;
+use std::fs::FileType;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
@@ -30,7 +31,21 @@ impl Project {
         }
     }
 
-    pub fn from_walk() -> Result<Self, cranelift_isle::error::Errors> {}
+    pub fn from_walk() -> Result<Self, cranelift_isle::error::Errors> {
+        let mut files = Vec::new();
+        for x in walkdir::WalkDir::new(std::env::current_dir().unwrap()) {
+            let x = match x {
+                Ok(x) => x,
+                Err(_) => {
+                    continue;
+                }
+            };
+            if x.file_type().is_file() && x.file_name().to_str().unwrap().ends_with(".isle") {
+                files.push(x.path().to_path_buf());
+            }
+        }
+        Self::new(files)
+    }
     pub fn new(
         paths: impl IntoIterator<Item = PathBuf>,
     ) -> Result<Self, cranelift_isle::error::Errors> {
@@ -49,11 +64,75 @@ impl Project {
     }
 
     pub fn run_visitor_for_file(&self, p: &PathBuf, handler: &mut dyn ItemOrAccessHandler) {
-        unimplemented!()
+        let provider = match self.found_file_defs(p) {
+            Some(x) => x,
+            None => {
+                log::error!("not found defs.");
+                return;
+            }
+        };
+        self.visit(provider, handler);
     }
+    fn found_file_defs<'a>(&'a self, p: &PathBuf) -> Option<VecDefAstProvider<'a>> {
+        let file_index = match self.found_file_index(p) {
+            Some(x) => x,
+            None => {
+                log::error!("file index out found,{:?}", p);
+                return None;
+            }
+        };
+        return Some(self.get_vec_def_ast_provider_from_file_index(file_index));
+    }
+
+    fn get_vec_def_ast_provider_from_file_index<'a>(
+        &'a self,
+        file_index: usize,
+    ) -> VecDefAstProvider<'a> {
+        let mut ret = Vec::new();
+        self.defs.defs.iter().for_each(|x| {
+            if get_decl_pos(x)
+                .map(|p| p.file == file_index)
+                .unwrap_or(false)
+            {
+                ret.push(x);
+            }
+        });
+        VecDefAstProvider::new(ret)
+    }
+
+    fn found_file_index(&self, p: &PathBuf) -> Option<usize> {
+        for (index, x) in self.defs.filenames.iter().enumerate() {
+            if x.to_string() == x.to_string() {
+                return Some(index);
+            }
+        }
+        None
+    }
+
     pub fn run_full_visitor(&self, handler: &mut dyn ItemOrAccessHandler) {
         let provider = ProjectAstProvider::new(self);
         self.visit(provider, handler);
+    }
+}
+
+fn get_decl_pos(d: &Def) -> Option<&Pos> {
+    match d {
+        Def::Pragma(x) => None,
+        Def::Type(x) => Some(&x.pos),
+        Def::Rule(x) => Some(&x.pos),
+        Def::Extractor(x) => Some(&x.pos),
+        Def::Decl(x) => Some(&x.pos),
+        Def::Extern(x) => Some(match x {
+            Extern::Extractor {
+                term,
+                func,
+                pos,
+                infallible,
+            } => &term.1,
+            Extern::Constructor { term, func, pos } => &term.1,
+            Extern::Const { name, ty, pos } => &name.1,
+        }),
+        Def::Converter(x) => Some(&x.pos),
     }
 }
 
@@ -65,7 +144,10 @@ impl Project {
             .map(|x| {
                 let s = x.as_ref().to_string();
                 lsp_types::Location {
-                    uri: url::Url::from_file_path(PathBuf::from_str(s.as_str()).unwrap()).unwrap(),
+                    uri: url::Url::from_file_path(
+                        PathBuf::from_str(s.as_str()).unwrap(), //
+                    )
+                    .unwrap(),
                     range: self.token_length.to_lsp_range(pos),
                 }
             })
@@ -172,10 +254,7 @@ pub trait ItemOrAccessHandler {
 }
 
 pub trait AstProvider: Clone {
-    fn with_defs(&self, call_back: impl FnMut(&Defs));
-    fn with_def(&self, mut call_back: impl FnMut(&Def)) {
-        self.with_defs(|x| x.defs.iter().for_each(|x| call_back(x)));
-    }
+    fn with_def(&self, call_back: impl FnMut(&Def));
     fn with_pragma(&self, mut call_back: impl FnMut(&Pragma)) {
         self.with_def(|x| match x {
             Def::Pragma(x) => call_back(x),
@@ -232,8 +311,25 @@ impl<'a> ProjectAstProvider<'a> {
 }
 
 impl<'a> AstProvider for ProjectAstProvider<'a> {
-    fn with_defs(&self, mut call_back: impl FnMut(&Defs)) {
-        call_back(&self.p.defs);
+    fn with_def(&self, mut call_back: impl FnMut(&Def)) {
+        self.p.defs.defs.iter().for_each(|x| call_back(x));
+    }
+}
+
+#[derive(Clone)]
+struct VecDefAstProvider<'a> {
+    defs: Vec<&'a Def>,
+}
+
+impl<'a> VecDefAstProvider<'a> {
+    fn new(defs: Vec<&'a Def>) -> Self {
+        Self { defs }
+    }
+}
+
+impl<'a> AstProvider for VecDefAstProvider<'a> {
+    fn with_def(&self, mut call_back: impl FnMut(&Def)) {
+        self.defs.iter().for_each(|x| call_back(*x))
     }
 }
 
@@ -244,14 +340,16 @@ pub struct TokenLength {
 
 impl TokenLength {
     pub(crate) fn to_lsp_range(&self, pos: &Pos) -> lsp_types::Range {
+        // ISLE line start with 1
+        // col start with 0
         let length = self.pos.get(pos).map(|x| *x).unwrap_or_default();
         lsp_types::Range {
             start: lsp_types::Position {
-                line: pos.line as u32,
+                line: (pos.line - 1) as u32,
                 character: pos.col as u32,
             },
             end: lsp_types::Position {
-                line: pos.line as u32,
+                line: (pos.line - 1) as u32,
                 character: pos.col as u32 + (length as u32),
             },
         }

@@ -1,6 +1,7 @@
 use super::context::*;
 use super::project::*;
 use crate::item::ItemOrAccess;
+use crate::readable_location;
 use crate::utils::GetPosition;
 use cranelift_isle::lexer::Pos;
 use lsp_server::*;
@@ -25,7 +26,7 @@ pub fn on_go_to_def_request(context: &Context, request: &Request) {
     context
         .project
         .run_visitor_for_file(&fpath.to_file_path().unwrap(), &mut handler);
-    let locations = vec![];
+    let locations = handler.to_locations();
     let r = Response::new_ok(
         request.id.clone(),
         serde_json::to_value(GotoDefinitionResponse::Array(locations)).unwrap(),
@@ -37,6 +38,15 @@ pub fn on_go_to_def_request(context: &Context, request: &Request) {
         .unwrap();
 }
 
+impl Handler {
+    fn to_locations(self) -> Vec<lsp_types::Location> {
+        if let Some(x) = self.result {
+            vec![x]
+        } else {
+            vec![]
+        }
+    }
+}
 pub(crate) struct Handler {
     /// The file we are looking for.
     pub(crate) filepath: url::Url,
@@ -79,12 +89,13 @@ impl ItemOrAccessHandler for Handler {
                 }
             }
             ItemOrAccess::Access(access) => {
-                let (access, def) = access.access_def_loc();
-                let l = p.mk_location(&access);
+                let (acc_pos, def) = access.access_def_loc();
+                let l = p.mk_location(&acc_pos);
+                eprintln!("$$$$$$$$$$$$$ {},{:?}", access, readable_location(&l));
                 if Self::in_range(self, &l) {
                     self.result = Some(p.mk_location(&def));
                     self.result_item_or_access = Some(item_or_access.clone());
-                    self.result_pos = Some(access);
+                    self.result_pos = Some(acc_pos);
                 }
             }
         }

@@ -56,7 +56,7 @@ fn main() {
     let (connection, io_threads) = Connection::stdio();
     let mut context = Context {
         connection,
-        project: Project::empty(),
+        project: Project::from_walk().unwrap(),
     };
     let (id, _client_response) = context
         .connection
@@ -86,8 +86,7 @@ fn main() {
                 ),
             },
         )),
-        selection_range_provider: None,
-        hover_provider: Some(HoverProviderCapability::Simple(true)),
+        // hover_provider: Some(HoverProviderCapability::Simple(true)),
         // The server provides completions as a user is typing.
         // completion_provider: Some(CompletionOptions {
         //     resolve_provider: None,
@@ -113,9 +112,6 @@ fn main() {
         references_provider: Some(OneOf::Left(true)),
         document_symbol_provider: Some(OneOf::Left(true)),
         inlay_hint_provider: Some(OneOf::Left(true)),
-        code_lens_provider: Some(lsp_types::CodeLensOptions {
-            resolve_provider: Some(true),
-        }),
         semantic_tokens_provider: Some(
             lsp_types::SemanticTokensServerCapabilities::SemanticTokensOptions(
                 lsp_types::SemanticTokensOptions {
