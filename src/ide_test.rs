@@ -2,8 +2,8 @@ use log::*;
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use crate::{goto_definition, project::Project};
-use crate::{readable_location, utils::*};
+
+use crate::{utils::*};
 
 struct SimpleLogger;
 impl log::Log for SimpleLogger {

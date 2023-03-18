@@ -7,10 +7,10 @@ use super::project::*;
 use super::utils::*;
 use crate::context::Context;
 use lsp_server::*;
-use lsp_server::*;
+
 use lsp_types::*;
 
-use std::path::*;
+
 use std::vec;
 
 /// Return a list of completion items corresponding to each one of Move's keywords.
@@ -72,7 +72,7 @@ impl ItemOrAccessHandler for Handler {
     fn visit_body(&self) -> bool {
         true
     }
-    fn handle_item_or_access(&mut self, p: &Project, item_or_access: &ItemOrAccess) {
+    fn handle_item_or_access(&mut self, _p: &Project, _item_or_access: &ItemOrAccess) {
         unimplemented!()
     }
     fn finished(&self) -> bool {
@@ -96,6 +96,6 @@ impl GetPosition for Handler {
     }
 }
 
-fn item_to_completion_item(item: &Item) -> Option<CompletionItem> {
+fn item_to_completion_item(_item: &Item) -> Option<CompletionItem> {
     unimplemented!()
 }

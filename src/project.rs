@@ -12,7 +12,6 @@ use std::collections::HashMap;
 
 use std::collections::HashSet;
 
-use std::hash::Hash;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
@@ -72,7 +71,7 @@ impl Project {
         let l = Lexer::from_files(files.clone())?;
         let token_length = TokenLength::new(l.clone())?;
         let defs = parse(l)?;
-        let mut comments = HashMap::new();
+        let comments = HashMap::new();
         let mut project = Self {
             defs,
             token_length,
@@ -138,7 +137,7 @@ impl Project {
         VecDefAstProvider::new(ret)
     }
 
-    fn found_file_index(&self, p: &PathBuf) -> Option<usize> {
+    fn found_file_index(&self, _p: &PathBuf) -> Option<usize> {
         for (index, x) in self.defs.filenames.iter().enumerate() {
             if x.to_string() == x.to_string() {
                 return Some(index);
@@ -178,7 +177,7 @@ impl Project {
         let file_paths = self.mk_file_paths();
         // parse
         // construct a special `Lexer`.
-        let filepath = self.mk_file_paths();
+        let _filepath = self.mk_file_paths();
         let lexer = Lexer::from_files_read(file_paths, |p2| {
             std::io::Result::Ok(if p2 == p.as_path() {
                 content.to_string()
@@ -238,7 +237,7 @@ impl Project {
 
 pub(crate) fn get_decl_pos(d: &Def) -> Option<&Pos> {
     match d {
-        Def::Pragma(x) => None,
+        Def::Pragma(_x) => None,
         Def::Type(x) => Some(&x.pos),
         Def::Rule(x) => Some(&x.pos),
         Def::Extractor(x) => Some(&x.pos),
@@ -246,12 +245,20 @@ pub(crate) fn get_decl_pos(d: &Def) -> Option<&Pos> {
         Def::Extern(x) => Some(match x {
             Extern::Extractor {
                 term,
-                func,
-                pos,
-                infallible,
+                func: _,
+                pos: _,
+                infallible: _,
             } => &term.1,
-            Extern::Constructor { term, func, pos } => &term.1,
-            Extern::Const { name, ty, pos } => &name.1,
+            Extern::Constructor {
+                term,
+                func: _,
+                pos: _,
+            } => &term.1,
+            Extern::Const {
+                name,
+                ty: _,
+                pos: _,
+            } => &name.1,
         }),
         Def::Converter(x) => Some(&x.pos),
     }
@@ -357,7 +364,7 @@ impl Globals {
                 .items
                 .get_mut(name)?
             {
-                Item::Decl { decl, kind: ty } => {
+                Item::Decl { decl: _, kind: ty } => {
                     ty.0 = ty.0 | decl_ty;
                 }
                 _ => {}
@@ -569,9 +576,17 @@ impl ItemOrAccessHandler for DummyHandler {
 
 pub(crate) fn get_patter_target(p: &Pattern) -> Option<&String> {
     match p {
-        Pattern::Var { var, pos } => Some(&var.0),
-        Pattern::BindPattern { var, subpat, pos } => Some(&var.0),
-        Pattern::Term { sym, args, pos } => Some(&sym.0),
+        Pattern::Var { var, pos: _ } => Some(&var.0),
+        Pattern::BindPattern {
+            var,
+            subpat: _,
+            pos: _,
+        } => Some(&var.0),
+        Pattern::Term {
+            sym,
+            args: _,
+            pos: _,
+        } => Some(&sym.0),
         _ => None,
     }
 }

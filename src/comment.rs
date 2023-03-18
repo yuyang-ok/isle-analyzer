@@ -1,6 +1,6 @@
 use std::{cmp::Ordering, collections::HashMap};
 
-use cranelift_isle::{ast::Def, lexer::Pos};
+use cranelift_isle::{lexer::Pos};
 
 #[derive(Default)]
 pub struct CommentExtrator {

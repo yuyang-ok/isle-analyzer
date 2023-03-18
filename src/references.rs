@@ -2,12 +2,12 @@ use super::context::Context;
 use super::goto_definition;
 use super::item::*;
 use super::project::*;
-use super::utils::*;
+
 use cranelift_isle::lexer::Pos;
 use lsp_server::*;
 use lsp_types::*;
 use std::collections::HashSet;
-use std::path::*;
+
 
 pub fn on_references_request(context: &mut Context, request: &Request) {
     let parameters = serde_json::from_value::<ReferenceParams>(request.params.clone())
@@ -88,7 +88,7 @@ impl Handler {
 impl ItemOrAccessHandler for Handler {
     fn handle_item_or_access(
         &mut self,
-        p: &super::project::Project,
+        _p: &super::project::Project,
         item: &crate::item::ItemOrAccess,
     ) {
         match item {

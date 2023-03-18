@@ -20,7 +20,7 @@ impl Project {
 
         // handle const
         provider.with_extern(|x| match x {
-            Extern::Const { name, ty, pos } => {
+            Extern::Const { name, ty, pos: _ } => {
                 self.visit_type_apply(ty, handler);
                 if handler.finished() {
                     return;
@@ -55,14 +55,14 @@ impl Project {
             provider.with_extern(|x| match x {
                 Extern::Extractor {
                     term,
-                    func,
-                    pos,
+                    func: _,
+                    pos: _,
                     infallible: _infallible,
                 } => self.globals.fix_decl_type(&term.0, DeclKind::EXTRATOR),
-                Extern::Constructor { term, func, pos } => {
+                Extern::Constructor { term, func: _, pos: _ } => {
                     self.globals.fix_decl_type(&term.0, DeclKind::CONSTRUCTOR)
                 }
-                Extern::Const { name, ty, pos } => {}
+                Extern::Const { name: _, ty: _, pos: _ } => {}
             });
             provider.with_rule(|x| {
                 let x = get_patter_target(&x.pattern);
@@ -82,9 +82,9 @@ impl Project {
         //
         provider.with_extern(|x| match x {
             Extern::Extractor {
-                term, func, pos, ..
+                term, func: _, pos: _, ..
             }
-            | Extern::Constructor { term, func, pos } => {
+            | Extern::Constructor { term, func: _, pos: _ } => {
                 let item = ItemOrAccess::Access(Access::DeclExtern {
                     access: term.clone(),
                     def: Box::new(
@@ -140,14 +140,14 @@ impl Project {
 
     fn apply_extractor(&self, p: &Pattern) {
         match p {
-            Pattern::Var { var, pos } => todo!(),
-            Pattern::BindPattern { var, subpat, pos } => todo!(),
-            Pattern::ConstInt { val, pos } => todo!(),
-            Pattern::ConstPrim { val, pos } => todo!(),
-            Pattern::Term { sym, args, pos } => todo!(),
-            Pattern::Wildcard { pos } => todo!(),
-            Pattern::And { subpats, pos } => todo!(),
-            Pattern::MacroArg { index, pos } => todo!(),
+            Pattern::Var { var: _, pos: _ } => todo!(),
+            Pattern::BindPattern { var: _, subpat: _, pos: _ } => todo!(),
+            Pattern::ConstInt { val: _, pos: _ } => todo!(),
+            Pattern::ConstPrim { val: _, pos: _ } => todo!(),
+            Pattern::Term { sym: _, args: _, pos: _ } => todo!(),
+            Pattern::Wildcard { pos: _ } => todo!(),
+            Pattern::And { subpats: _, pos: _ } => todo!(),
+            Pattern::MacroArg { index: _, pos: _ } => todo!(),
         }
     }
 
