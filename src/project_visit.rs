@@ -150,6 +150,7 @@ impl Project {
             Pattern::MacroArg { index, pos } => todo!(),
         }
     }
+
     fn visit_type_apply(&self, ty: &Ident, handler: &mut dyn ItemOrAccessHandler) {
         let item = ItemOrAccess::Access(Access::AppleType {
             access: ty.clone(),

@@ -6,7 +6,6 @@ use crate::utils::GetPosition;
 use cranelift_isle::lexer::Pos;
 use lsp_server::*;
 use lsp_types::*;
-use std::path::PathBuf;
 
 /// Handles go-to-def request of the language server.
 pub fn on_go_to_def_request(context: &Context, request: &Request) {

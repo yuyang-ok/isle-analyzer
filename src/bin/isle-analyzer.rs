@@ -86,7 +86,8 @@ fn main() {
                 ),
             },
         )),
-        // hover_provider: Some(HoverProviderCapability::Simple(true)),
+        hover_provider: Some(HoverProviderCapability::Simple(true)),
+
         // The server provides completions as a user is typing.
         // completion_provider: Some(CompletionOptions {
         //     resolve_provider: None,
@@ -189,4 +190,19 @@ fn on_response(_context: &Context, _response: &Response) {
     log::error!("handle response from client");
 }
 
-fn on_notification(context: &mut Context, notification: &lsp_server::Notification) {}
+fn on_notification(context: &mut Context, notification: &lsp_server::Notification) {
+    match notification.method.as_str() {
+        lsp_types::notification::DidChangeTextDocument::METHOD => {
+            use lsp_types::DidChangeTextDocumentParams;
+            let parameters =
+                serde_json::from_value::<DidChangeTextDocumentParams>(notification.params.clone())
+                    .expect("could not deserialize DidChangeTextDocumentParams request");
+            let fpath = parameters.text_document.uri.to_file_path().unwrap();
+            context.project.update_defs(
+                &fpath,
+                parameters.content_changes.last().unwrap().text.as_str(),
+            );
+        }
+        _ => log::error!("handle request '{}' from client", notification.method),
+    }
+}

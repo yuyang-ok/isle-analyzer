@@ -1,3 +1,4 @@
+use super::project::*;
 use cranelift_isle::{ast::*, lexer::Pos};
 
 #[derive(Clone)]
@@ -39,7 +40,7 @@ impl Default for Item {
     }
 }
 
-const UNKNOWN_POS: Pos = Pos {
+pub const UNKNOWN_POS: Pos = Pos {
     file: 999,
     offset: 0,
     line: 0,
@@ -55,6 +56,10 @@ impl Item {
             Item::Const { name, ty } => name.1,
             Item::Var { name, ty } => name.1,
         }
+    }
+
+    pub(crate) fn def_file(&self) -> usize {
+        self.def_loc().file
     }
 
     pub(crate) fn decl_nth_ty(&self, n: usize) -> Option<&Ident> {
@@ -78,6 +83,16 @@ pub enum Access {
     AppleType { access: Ident, def: Box<Item> },
     DeclExtern { access: Ident, def: Box<Item> },
     ApplyExtractor { access: Ident, def: Box<Item> },
+}
+
+impl Access {
+    pub fn def_item(&self) -> &Item {
+        match self {
+            Access::AppleType { def, .. } => def.as_ref(),
+            Access::DeclExtern { def, .. } => def.as_ref(),
+            Access::ApplyExtractor { def, .. } => def.as_ref(),
+        }
+    }
 }
 
 impl Access {

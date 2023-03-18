@@ -2,5 +2,5 @@
     "cSpell.words": [
         "funs"
     ],
-     
+    "rust-analyzer.checkOnSave": false 
 }

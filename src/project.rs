@@ -1,3 +1,7 @@
+use crate::comment::CommentExtrator;
+use crate::comment::DocumentComments;
+use crate::item;
+
 use super::item::*;
 use cranelift_isle::ast::*;
 use cranelift_isle::error::Errors;
@@ -7,7 +11,8 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 
 use std::collections::HashSet;
-use std::fs::FileType;
+
+use std::hash::Hash;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
@@ -16,6 +21,7 @@ pub struct Project {
     pub(crate) defs: Defs,
     pub(crate) token_length: TokenLength,
     pub(crate) globals: Globals,
+    pub(crate) comments: HashMap<PathBuf, DocumentComments>,
 }
 
 impl Project {
@@ -28,6 +34,7 @@ impl Project {
             },
             token_length: Default::default(),
             globals: Default::default(),
+            comments: Default::default(),
         }
     }
 
@@ -46,6 +53,18 @@ impl Project {
         }
         Self::new(files)
     }
+
+    fn get_comment(content: &str, defs: impl AstProvider) -> DocumentComments {
+        let e = CommentExtrator::new(content);
+        let mut poes = Vec::new();
+        defs.with_def(|x| {
+            if let Some(pos) = get_decl_pos(x) {
+                poes.push(pos.clone());
+            }
+        });
+        DocumentComments::new(&e, &poes)
+    }
+
     pub fn new(
         paths: impl IntoIterator<Item = PathBuf>,
     ) -> Result<Self, cranelift_isle::error::Errors> {
@@ -53,14 +72,33 @@ impl Project {
         let l = Lexer::from_files(files.clone())?;
         let token_length = TokenLength::new(l.clone())?;
         let defs = parse(l)?;
-        let x = Self {
+        let mut comments = HashMap::new();
+        let mut project = Self {
             defs,
             token_length,
             globals: Globals::new(),
+            comments,
         };
+
+        let mut comments = HashMap::new();
+        for (index, f) in files.iter().enumerate() {
+            let e = Self::get_comment(
+                project.file_content(index),
+                project.get_vec_def_ast_provider_from_file_index(index),
+            );
+            comments.insert(f.clone(), e);
+        }
+        project.comments = comments;
         let mut dummy = DummyHandler {};
-        x.run_full_visitor(&mut dummy);
-        Ok(x)
+        project.run_full_visitor(&mut dummy);
+        Ok(project)
+    }
+    fn file_content(&self, file_index: usize) -> &str {
+        self.defs
+            .file_texts
+            .get(file_index)
+            .map(|x| x.as_ref())
+            .unwrap_or("")
     }
 
     pub fn run_visitor_for_file(&self, p: &PathBuf, handler: &mut dyn ItemOrAccessHandler) {
@@ -109,13 +147,96 @@ impl Project {
         None
     }
 
+    pub(crate) fn file_index_path(&self, index: usize) -> Option<PathBuf> {
+        self.defs
+            .filenames
+            .get(index)
+            .map(|x| PathBuf::from_str(x.as_ref()).unwrap())
+    }
+
     pub fn run_full_visitor(&self, handler: &mut dyn ItemOrAccessHandler) {
         let provider = ProjectAstProvider::new(self);
         self.visit(provider, handler);
     }
+
+    fn mk_file_paths(&self) -> Vec<PathBuf> {
+        self.defs
+            .filenames
+            .iter()
+            .map(|x| PathBuf::from_str(x.as_ref()).unwrap())
+            .collect()
+    }
+
+    pub fn update_defs(&mut self, p: &PathBuf, content: &str) -> Result<(), Errors> {
+        let file_index = match self.found_file_index(p) {
+            Some(x) => x,
+            None => {
+                log::error!("old defs not found for {:?}", p.as_path());
+                return std::result::Result::Ok(());
+            }
+        };
+        let file_paths = self.mk_file_paths();
+        // parse
+        // construct a special `Lexer`.
+        let filepath = self.mk_file_paths();
+        let lexer = Lexer::from_files_read(file_paths, |p2| {
+            std::io::Result::Ok(if p2 == p.as_path() {
+                content.to_string()
+            } else {
+                "".to_string()
+            })
+        })?;
+        let defs = parse(lexer.clone())?;
+
+        // insert into `defs`.
+        let mut slots = Vec::new();
+        // delete all old `Def`
+        self.defs
+            .defs
+            .iter_mut()
+            .enumerate()
+            .for_each(|(index, x)| {
+                if let Some(pos) = get_decl_pos(x) {
+                    if pos.file == file_index {
+                        slots.push(index);
+                    }
+                }
+            });
+        let mut slots = &slots[..];
+        for d in defs.defs.into_iter() {
+            if slots.len() > 0 {
+                let index = slots[0];
+                self.defs.defs[index] = d;
+                slots = &slots[1..];
+            } else {
+                self.defs.defs.push(d);
+            }
+        }
+
+        for s in slots {
+            self.defs.defs[*s] = FALSE_DEF.clone();
+        }
+
+        self.token_length.update_token_length(file_index, lexer);
+        // rebuild global items.
+
+        let mut dummy = DummyHandler {};
+        self.run_visitor_for_file(p, &mut dummy);
+
+        // update comment
+        self.comments.insert(
+            p.clone(),
+            Self::get_comment(
+                content,
+                self.get_vec_def_ast_provider_from_file_index(file_index),
+            ),
+        );
+
+        std::result::Result::Ok(())
+    }
 }
 
-fn get_decl_pos(d: &Def) -> Option<&Pos> {
+pub(crate) fn get_decl_pos(d: &Def) -> Option<&Pos> {
     match d {
         Def::Pragma(x) => None,
         Def::Type(x) => Some(&x.pos),
@@ -183,7 +304,23 @@ impl Globals {
     pub(crate) fn new() -> Self {
         Self::default()
     }
-
+    fn delete_old_defs(&self, file_index: usize) {
+        let mut keys = HashSet::new();
+        for (k, v) in self.scopes.as_ref().borrow().first().unwrap().items.iter() {
+            if v.def_file() == file_index {
+                keys.insert(k.clone());
+            }
+        }
+        keys.iter().for_each(|x| {
+            self.scopes
+                .as_ref()
+                .borrow_mut()
+                .first_mut()
+                .unwrap()
+                .items
+                .remove(x);
+        });
+    }
     pub(crate) fn enter_item(&self, name: String, item: impl Into<Item>) {
         let item = item.into();
         self.scopes
@@ -253,6 +390,16 @@ pub trait ItemOrAccessHandler {
     fn finished(&self) -> bool;
 }
 
+lazy_static! {
+    static ref FALSE_DEF: Def = Def::Type(Type {
+        name: Ident("".to_string(), item::UNKNOWN_POS),
+        is_extern: false,
+        is_nodebug: false,
+        ty: TypeValue::Primitive(Ident("".to_string(), item::UNKNOWN_POS), item::UNKNOWN_POS),
+        pos: item::UNKNOWN_POS,
+    });
+}
+
 pub trait AstProvider: Clone {
     fn with_def(&self, call_back: impl FnMut(&Def));
     fn with_pragma(&self, mut call_back: impl FnMut(&Pragma)) {
@@ -312,7 +459,13 @@ impl<'a> ProjectAstProvider<'a> {
 
 impl<'a> AstProvider for ProjectAstProvider<'a> {
     fn with_def(&self, mut call_back: impl FnMut(&Def)) {
-        self.p.defs.defs.iter().for_each(|x| call_back(x));
+        self.p.defs.defs.iter().for_each(|x| {
+            if let Some(pos) = get_decl_pos(x) {
+                if pos.clone() != UNKNOWN_POS {
+                    call_back(x);
+                }
+            }
+        });
     }
 }
 
@@ -329,7 +482,13 @@ impl<'a> VecDefAstProvider<'a> {
 
 impl<'a> AstProvider for VecDefAstProvider<'a> {
     fn with_def(&self, mut call_back: impl FnMut(&Def)) {
-        self.defs.iter().for_each(|x| call_back(*x))
+        self.defs.iter().for_each(|x| {
+            if let Some(pos) = get_decl_pos(x) {
+                if pos.clone() != UNKNOWN_POS {
+                    call_back(x);
+                }
+            }
+        })
     }
 }
 
@@ -377,7 +536,7 @@ impl TokenLength {
     pub(crate) fn update_token_length(
         &mut self,
         file_index: usize,
-        content: &str,
+        mut lexer: Lexer,
     ) -> Result<(), Errors> {
         let mut del = HashSet::new();
         self.pos.keys().for_each(|k| {
@@ -388,8 +547,7 @@ impl TokenLength {
         for d in del {
             self.pos.remove(&d);
         }
-        let mut l = Lexer::from_str(content, "")?;
-        while let Some((mut pos, t)) = l.next()? {
+        while let Some((mut pos, t)) = lexer.next()? {
             pos.file = file_index;
             self.pos.insert(pos, Self::t_len(&t));
         }

@@ -1,6 +1,7 @@
 use super::context::Context;
 use super::goto_definition;
 use super::item::*;
+use super::project::Project;
 use lsp_server::*;
 use lsp_types::*;
 
@@ -23,7 +24,7 @@ pub fn on_hover_request(context: &Context, request: &Request) {
         .project
         .run_visitor_for_file(&fpath.to_file_path().unwrap(), &mut handler);
     let item = handler.result_item_or_access.clone();
-    let hover = item.map(|x| hover_on_item_or_access(&x));
+    let hover = item.map(|x| hover_on_item_or_access(&x, &context.project));
     let hover = hover.map(|x| Hover {
         contents: HoverContents::Scalar(MarkedString::String(x)),
         range: None,
@@ -36,6 +37,24 @@ pub fn on_hover_request(context: &Context, request: &Request) {
         .unwrap();
 }
 
-fn hover_on_item_or_access(ia: &ItemOrAccess) -> String {
-    unimplemented!()
+fn hover_on_item_or_access(ia: &ItemOrAccess, p: &Project) -> String {
+    let item_hover = |item: &Item| -> String {
+        let pos = item.def_loc();
+        let fpath = p.file_index_path(pos.file);
+        let comment = if let Some(fpath) = fpath.as_ref() {
+            p.comments
+                .get(fpath)
+                .map(|d| d.get_comment(&pos).map(|x| x.as_str()))
+                .flatten()
+                .unwrap_or("")
+        } else {
+            ""
+        };
+        format!("{}\n{}", comment, item)
+    };
+
+    match ia {
+        ItemOrAccess::Item(item) => item_hover(item),
+        ItemOrAccess::Access(acc) => item_hover(acc.def_item()),
+    }
 }

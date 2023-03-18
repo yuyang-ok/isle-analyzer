@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate lazy_static;
+
 use lsp_types::Location;
 
 pub mod comment;
