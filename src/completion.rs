@@ -95,6 +95,30 @@ impl GetPosition for Handler {
     }
 }
 
-fn item_to_completion_item(_item: &Item) -> Option<CompletionItem> {
-    unimplemented!()
+fn item_to_completion_item(item: &Item) -> Option<CompletionItem> {
+    let x = match item {
+        Item::Type { ty } => CompletionItem {
+            label: ty.name.0.clone(),
+            kind: Some(CompletionItemKind::STRUCT),
+            ..Default::default()
+        },
+        Item::Decl { decl, .. } => CompletionItem {
+            label: decl.term.0.clone(),
+            kind: Some(CompletionItemKind::CONSTRUCTOR),
+            ..Default::default()
+        },
+        Item::Dummy => return None,
+        Item::Const { name, .. } => CompletionItem {
+            label: name.0.clone(),
+            kind: Some(CompletionItemKind::CONSTANT),
+            ..Default::default()
+        },
+
+        Item::Var { name, .. } => CompletionItem {
+            label: name.0.clone(),
+            kind: Some(CompletionItemKind::CONSTANT),
+            ..Default::default()
+        },
+    };
+    Some(x)
 }

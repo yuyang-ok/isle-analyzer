@@ -7,6 +7,7 @@ use isle_analyzer::goto_definition;
 use isle_analyzer::hover;
 use isle_analyzer::project::Project;
 use isle_analyzer::references;
+use isle_analyzer::semantic_tokens;
 
 use log::*;
 use lsp_types::notification::Notification;
@@ -179,8 +180,12 @@ fn on_request(context: &mut Context, request: &lsp_server::Request) {
         lsp_types::request::HoverRequest::METHOD => {
             hover::on_hover_request(context, request);
         }
+
         lsp_types::request::DocumentSymbolRequest::METHOD => {
             document_symbol::on_document_symbol_request(context, request);
+        }
+        lsp_types::request::SemanticTokensFullRequest::METHOD => {
+            semantic_tokens::on_senantic_tokens(context, request);
         }
         _ => log::error!("handle request '{}' from client", request.method),
     }
