@@ -2,7 +2,13 @@ use lsp_types::Location;
 use std::path::*;
 
 pub trait GetPosition {
-    fn get_position(&self) -> (url::Url, u32 /* line */, u32 /* col */);
+    fn get_position(
+        &self,
+    ) -> (
+        url::Url,
+        u32, // line zero-based
+        u32, // column zero-based
+    );
     fn in_range(x: &impl GetPosition, range: &Location) -> bool {
         let (filepath, line, col) = x.get_position();
         if filepath != range.uri {
@@ -59,4 +65,28 @@ pub fn normal_path_components<'a>(x: &Vec<Component<'a>>) -> PathBuf {
         ret.push(".")
     }
     ret
+}
+
+impl GetPosition for Location {
+    fn get_position(
+        &self,
+    ) -> (
+        url::Url,
+        u32, // line zero-based
+        u32, // column zero-based
+    ) {
+        if self.range.start.line == self.range.end.line {
+            return (
+                self.uri.clone(),
+                self.range.start.line,
+                (self.range.start.character + self.range.end.character) / 2,
+            );
+        } else {
+            return (
+                self.uri.clone(),
+                (self.range.start.line + self.range.end.line) / 2,
+                0,
+            );
+        }
+    }
 }

@@ -59,17 +59,23 @@ impl Project {
                     pos: _,
                     infallible: _infallible,
                 } => self.globals.fix_decl_type(&term.0, DeclKind::EXTRATOR),
-                Extern::Constructor { term, func: _, pos: _ } => {
-                    self.globals.fix_decl_type(&term.0, DeclKind::CONSTRUCTOR)
-                }
-                Extern::Const { name: _, ty: _, pos: _ } => {}
+                Extern::Constructor {
+                    term,
+                    func: _,
+                    pos: _,
+                } => self.globals.fix_decl_type(&term.0, DeclKind::CONSTRUCTOR),
+                Extern::Const {
+                    name: _,
+                    ty: _,
+                    pos: _,
+                } => {}
             });
-            provider.with_rule(|x| {
-                let x = get_patter_target(&x.pattern);
-                if let Some(x) = x {
-                    self.globals.fix_decl_type(x, DeclKind::CONSTRUCTOR);
-                }
-            });
+            // provider.with_rule(|x| {
+            //     let name_and_pos = get_rule_target(&x.pattern);
+            //     if let Some((name, pos)) = name_and_pos {
+            //         self.globals.fix_decl_type(x, DeclKind::CONSTRUCTOR);
+            //     }
+            // });
             provider.with_extractor(|x| {
                 self.globals.fix_decl_type(&x.term.0, DeclKind::EXTRATOR);
             });
@@ -82,9 +88,16 @@ impl Project {
         //
         provider.with_extern(|x| match x {
             Extern::Extractor {
-                term, func: _, pos: _, ..
+                term,
+                func: _,
+                pos: _,
+                ..
             }
-            | Extern::Constructor { term, func: _, pos: _ } => {
+            | Extern::Constructor {
+                term,
+                func: _,
+                pos: _,
+            } => {
                 let item = ItemOrAccess::Access(Access::DeclExtern {
                     access: term.clone(),
                     def: Box::new(
@@ -115,6 +128,7 @@ impl Project {
                 match decl {
                     Item::Decl { decl, .. } => {
                         // enter all vars
+
                         if let Some(name) = ext.args.get(0) {
                             let ty = decl.ret_ty.0.clone();
                             let item = ItemOrAccess::Item(Item::Var {
@@ -141,10 +155,18 @@ impl Project {
     fn apply_extractor(&self, p: &Pattern) {
         match p {
             Pattern::Var { var: _, pos: _ } => todo!(),
-            Pattern::BindPattern { var: _, subpat: _, pos: _ } => todo!(),
+            Pattern::BindPattern {
+                var: _,
+                subpat: _,
+                pos: _,
+            } => todo!(),
             Pattern::ConstInt { val: _, pos: _ } => todo!(),
             Pattern::ConstPrim { val: _, pos: _ } => todo!(),
-            Pattern::Term { sym: _, args: _, pos: _ } => todo!(),
+            Pattern::Term {
+                sym: _,
+                args: _,
+                pos: _,
+            } => todo!(),
             Pattern::Wildcard { pos: _ } => todo!(),
             Pattern::And { subpats: _, pos: _ } => todo!(),
             Pattern::MacroArg { index: _, pos: _ } => todo!(),

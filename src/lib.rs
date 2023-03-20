@@ -10,6 +10,7 @@ pub mod document_symbol;
 pub mod goto_definition;
 pub mod hover;
 pub mod ide_test;
+pub mod inlay_hitnt;
 pub mod item;
 pub mod project;
 pub mod project_visit;

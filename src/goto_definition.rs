@@ -90,7 +90,6 @@ impl ItemOrAccessHandler for Handler {
             ItemOrAccess::Access(access) => {
                 let (acc_pos, def) = access.access_def_loc();
                 let l = p.mk_location(&acc_pos);
-                eprintln!("$$$$$$$$$$$$$ {},{:?}", access, readable_location(&l));
                 if Self::in_range(self, &l) {
                     self.result = Some(p.mk_location(&def));
                     self.result_item_or_access = Some(item_or_access.clone());

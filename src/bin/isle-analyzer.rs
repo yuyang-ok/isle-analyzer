@@ -193,15 +193,17 @@ fn on_response(_context: &Context, _response: &Response) {
 fn on_notification(context: &mut Context, notification: &lsp_server::Notification) {
     match notification.method.as_str() {
         lsp_types::notification::DidChangeTextDocument::METHOD => {
-            use lsp_types::DidChangeTextDocumentParams;
             let parameters =
                 serde_json::from_value::<DidChangeTextDocumentParams>(notification.params.clone())
                     .expect("could not deserialize DidChangeTextDocumentParams request");
             let fpath = parameters.text_document.uri.to_file_path().unwrap();
-            context.project.update_defs(
+            match context.project.update_defs(
                 &fpath,
                 parameters.content_changes.last().unwrap().text.as_str(),
-            );
+            ) {
+                Ok(_) => {}
+                Err(err) => log::error!("update_def failed,err:{:?}", err),
+            };
         }
         _ => log::error!("handle request '{}' from client", notification.method),
     }

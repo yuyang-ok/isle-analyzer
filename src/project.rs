@@ -1,17 +1,14 @@
+use super::item::*;
 use crate::comment::CommentExtrator;
 use crate::comment::DocumentComments;
 use crate::item;
-
-use super::item::*;
 use cranelift_isle::ast::*;
 use cranelift_isle::error::Errors;
 use cranelift_isle::lexer::*;
 use cranelift_isle::parser::*;
 use std::cell::RefCell;
 use std::collections::HashMap;
-
 use std::collections::HashSet;
-
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
@@ -110,9 +107,12 @@ impl Project {
         };
         self.visit(provider, handler);
     }
-    fn found_file_defs<'a>(&'a self, p: &PathBuf) -> Option<VecDefAstProvider<'a>> {
+    pub(crate) fn found_file_defs<'a>(&'a self, p: &PathBuf) -> Option<VecDefAstProvider<'a>> {
         let file_index = match self.found_file_index(p) {
-            Some(x) => x,
+            Some(x) => {
+                eprintln!("xxx file_index:{} p:{:?}", x, p.as_path());
+                x
+            }
             None => {
                 log::error!("file index out found,{:?}", p);
                 return None;
@@ -137,9 +137,9 @@ impl Project {
         VecDefAstProvider::new(ret)
     }
 
-    fn found_file_index(&self, _p: &PathBuf) -> Option<usize> {
+    fn found_file_index(&self, p: &PathBuf) -> Option<usize> {
         for (index, x) in self.defs.filenames.iter().enumerate() {
-            if x.to_string() == x.to_string() {
+            if p.to_str().unwrap() == x.as_ref() {
                 return Some(index);
             }
         }
@@ -216,7 +216,7 @@ impl Project {
             self.defs.defs[*s] = FALSE_DEF.clone();
         }
 
-        self.token_length.update_token_length(file_index, lexer);
+        self.token_length.update_token_length(file_index, lexer)?;
         // rebuild global items.
 
         let mut dummy = DummyHandler {};
@@ -477,7 +477,7 @@ impl<'a> AstProvider for ProjectAstProvider<'a> {
 }
 
 #[derive(Clone)]
-struct VecDefAstProvider<'a> {
+pub(crate) struct VecDefAstProvider<'a> {
     defs: Vec<&'a Def>,
 }
 
@@ -574,19 +574,19 @@ impl ItemOrAccessHandler for DummyHandler {
     fn handle_item_or_access(&mut self, _p: &Project, _item: &ItemOrAccess) {}
 }
 
-pub(crate) fn get_patter_target(p: &Pattern) -> Option<&String> {
+pub(crate) fn get_rule_target(p: &Pattern) -> Option<(&String, Pos)> {
     match p {
-        Pattern::Var { var, pos: _ } => Some(&var.0),
+        Pattern::Var { var, pos: _ } => None,
         Pattern::BindPattern {
             var,
             subpat: _,
             pos: _,
-        } => Some(&var.0),
+        } => Some((&var.0, var.1)),
         Pattern::Term {
             sym,
             args: _,
             pos: _,
-        } => Some(&sym.0),
+        } => Some((&sym.0, sym.1)),
         _ => None,
     }
 }

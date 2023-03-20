@@ -10,7 +10,6 @@ use lsp_server::*;
 
 use lsp_types::*;
 
-
 use std::vec;
 
 /// Return a list of completion items corresponding to each one of Move's keywords.
