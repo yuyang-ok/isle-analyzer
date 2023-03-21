@@ -69,7 +69,7 @@ impl Item {
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq, Default)]
 pub struct DeclKind(pub(crate) u8);
 
 impl DeclKind {
@@ -79,17 +79,23 @@ impl DeclKind {
 
 #[derive(Clone)]
 pub enum Access {
-    AppleType { access: Ident, def: Box<Item> },
-    DeclExtern { access: Ident, def: Box<Item> },
-    ApplyExtractor { access: Ident, def: Box<Item> },
+    AppleType { access: Ident, def: Item },
+    DeclExtern { access: Ident, def: Item },
+    ApplyExtractor { access: Ident, def: Item },
+    ExtractVar { access: Ident, def: Item },
+    ApplyConst { access: Ident, def: Item },
+    ImplExtractor { access: Ident, def: Item },
 }
 
 impl Access {
     pub fn def_item(&self) -> &Item {
         match self {
-            Access::AppleType { def, .. } => def.as_ref(),
-            Access::DeclExtern { def, .. } => def.as_ref(),
-            Access::ApplyExtractor { def, .. } => def.as_ref(),
+            Access::AppleType { def, .. } => def,
+            Access::DeclExtern { def, .. } => def,
+            Access::ApplyExtractor { def, .. } => def,
+            Access::ExtractVar { def, .. } => def,
+            Access::ApplyConst { def, .. } => def,
+            Access::ImplExtractor { def, .. } => def,
         }
     }
 }
@@ -100,6 +106,9 @@ impl Access {
             Access::AppleType { access, def } => (access.1, def.def_loc()),
             Access::DeclExtern { access, def } => (access.1, def.def_loc()),
             Access::ApplyExtractor { access, def } => (access.1, def.def_loc()),
+            Access::ApplyConst { access, def } => (access.1, def.def_loc()),
+            Access::ExtractVar { access, def } => (access.1, def.def_loc()),
+            Access::ImplExtractor { access, def } => (access.1, def.def_loc()),
         }
     }
 }
@@ -130,7 +139,14 @@ impl std::fmt::Display for Access {
         match self {
             Access::AppleType { access, def } => write!(f, "apply type {}->{}", access.0, def),
             Access::DeclExtern { access, def } => write!(f, "decl extern {}->{}", access.0, def),
-            Access::ApplyExtractor { access: _, def: _ } => todo!(),
+            Access::ApplyExtractor { access, def } => {
+                write!(f, "apply extrator {}->{}", access.0, def)
+            }
+            Access::ExtractVar { access, def } => write!(f, "extract var {}->{}", access.0, def),
+            Access::ApplyConst { access, def } => write!(f, "apply const {}->{}", access.0, def),
+            Access::ImplExtractor { access, def } => {
+                write!(f, "impl extractor {}->{}", access.0, def)
+            }
         }
     }
 }

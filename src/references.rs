@@ -8,7 +8,6 @@ use lsp_server::*;
 use lsp_types::*;
 use std::collections::HashSet;
 
-
 pub fn on_references_request(context: &mut Context, request: &Request) {
     let parameters = serde_json::from_value::<ReferenceParams>(request.params.clone())
         .expect("could not deserialize references request");
@@ -76,10 +75,16 @@ impl Handler {
     pub(crate) fn to_locations(self, convert_loc: &Project) -> Vec<Location> {
         let mut file_ranges = Vec::with_capacity(self.refs.len() + 1);
         if self.include_declaration {
-            file_ranges.push(convert_loc.mk_location(&self.def_loc));
+            let l = convert_loc.mk_location(&self.def_loc);
+            if let Some(l) = l {
+                file_ranges.push(l);
+            }
         }
         for x in self.refs.iter() {
-            file_ranges.push(convert_loc.mk_location(x));
+            let l = convert_loc.mk_location(x);
+            if let Some(l) = l {
+                file_ranges.push(l);
+            }
         }
         file_ranges
     }

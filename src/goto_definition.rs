@@ -1,7 +1,7 @@
 use super::context::*;
 use super::project::*;
 use crate::item::ItemOrAccess;
-use crate::readable_location;
+
 use crate::utils::GetPosition;
 use cranelift_isle::lexer::Pos;
 use lsp_server::*;
@@ -81,19 +81,26 @@ impl ItemOrAccessHandler for Handler {
             ItemOrAccess::Item(item) => {
                 let def_loc = item.def_loc();
                 let l = p.mk_location(&def_loc);
-                if Self::in_range(self, &l) {
-                    self.result = Some(l.clone());
-                    self.result_item_or_access = Some(item_or_access.clone());
-                    self.result_pos = Some(def_loc);
+                if let Some(l) = l {
+                    if Self::in_range(self, &l) {
+                        self.result = Some(l.clone());
+                        self.result_item_or_access = Some(item_or_access.clone());
+                        self.result_pos = Some(def_loc);
+                    }
                 }
             }
             ItemOrAccess::Access(access) => {
                 let (acc_pos, def) = access.access_def_loc();
                 let l = p.mk_location(&acc_pos);
-                if Self::in_range(self, &l) {
-                    self.result = Some(p.mk_location(&def));
-                    self.result_item_or_access = Some(item_or_access.clone());
-                    self.result_pos = Some(acc_pos);
+                if let Some(l) = l {
+                    if Self::in_range(self, &l) {
+                        let l = p.mk_location(&def);
+                        if let Some(l) = l {
+                            self.result = Some(l);
+                            self.result_item_or_access = Some(item_or_access.clone());
+                            self.result_pos = Some(acc_pos);
+                        }
+                    }
                 }
             }
         }

@@ -1,11 +1,8 @@
-use std::collections::{vec_deque, HashMap};
-
-use crate::project::{self, get_rule_target, AstProvider};
-
 use super::context::*;
-
+use crate::project::{get_rule_target, AstProvider};
 use lsp_server::*;
 use lsp_types::*;
+use std::collections::HashMap;
 
 pub fn on_document_symbol_request(context: &Context, request: &Request) {
     let parameters = serde_json::from_value::<DocumentSymbolParams>(request.params.clone())
@@ -21,42 +18,71 @@ pub fn on_document_symbol_request(context: &Context, request: &Request) {
     };
     asts.with_type(|t| {
         let l = context.project.mk_location(&t.pos);
-        result.push(DocumentSymbol {
-            name: t.name.0.clone(),
-            detail: None,
-            kind: SymbolKind::STRUCT,
-            tags: None,
-            deprecated: None,
-            range: l.range,
-            selection_range: l.range,
-            children: None,
-        });
+        if let Some(l) = l {
+            result.push(DocumentSymbol {
+                name: t.name.0.clone(),
+                detail: None,
+                kind: SymbolKind::STRUCT,
+                tags: None,
+                deprecated: None,
+                range: l.range,
+                selection_range: l.range,
+                children: None,
+            });
+        }
     });
     asts.with_converter(|t| {
         let l = context.project.mk_location(&t.term.1);
-        result.push(DocumentSymbol {
-            name: t.term.0.clone(),
-            detail: None,
-            kind: SymbolKind::STRUCT,
-            tags: None,
-            deprecated: None,
-            range: l.range,
-            selection_range: l.range,
-            children: None,
-        });
+        if let Some(l) = l {
+            result.push(DocumentSymbol {
+                name: t.term.0.clone(),
+                detail: None,
+                kind: SymbolKind::STRUCT,
+                tags: None,
+                deprecated: None,
+                range: l.range,
+                selection_range: l.range,
+                children: None,
+            });
+        }
     });
     asts.with_decl(|x| {
         let l = context.project.mk_location(&x.term.1);
-        decls.insert_decl(x.term.0.clone(), l.range);
+        if let Some(l) = l {
+            decls.insert_decl(x.term.0.clone(), l.range);
+        }
     });
     asts.with_rule(|x| {
         let name_and_pos = get_rule_target(&x.pattern);
         if let Some((name, pos)) = name_and_pos {
             let l = context.project.mk_location(&pos);
+            if let Some(l) = l {
+                decls.insert_decl_rule(
+                    name.clone(),
+                    DocumentSymbol {
+                        name: DeclSymbolMap::rule_name(x.prio),
+                        detail: None,
+                        kind: SymbolKind::METHOD,
+                        tags: None,
+                        deprecated: None,
+                        range: l.range,
+                        selection_range: l.range,
+                        children: None,
+                    },
+                );
+            }
+        } else {
+            panic!("not found.");
+        }
+    });
+
+    asts.with_extractor(|x| {
+        let l = context.project.mk_location(&x.term.1);
+        if let Some(l) = l {
             decls.insert_decl_rule(
-                name.clone(),
+                x.term.0.clone(),
                 DocumentSymbol {
-                    name: DeclSymbolMap::rule_name(x.prio),
+                    name: "extractor".to_string(),
                     detail: None,
                     kind: SymbolKind::METHOD,
                     tags: None,
@@ -66,26 +92,7 @@ pub fn on_document_symbol_request(context: &Context, request: &Request) {
                     children: None,
                 },
             );
-        } else {
-            panic!("not found.");
         }
-    });
-
-    asts.with_extractor(|x| {
-        let l = context.project.mk_location(&x.term.1);
-        decls.insert_decl_rule(
-            x.term.0.clone(),
-            DocumentSymbol {
-                name: "extractor".to_string(),
-                detail: None,
-                kind: SymbolKind::METHOD,
-                tags: None,
-                deprecated: None,
-                range: l.range,
-                selection_range: l.range,
-                children: None,
-            },
-        );
     });
     result.extend(decls.to_document_symbols().into_iter());
     let result = Response::new_ok(

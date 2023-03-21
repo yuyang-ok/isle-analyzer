@@ -6,6 +6,9 @@ use cranelift_isle::ast::*;
 use cranelift_isle::error::Errors;
 use cranelift_isle::lexer::*;
 use cranelift_isle::parser::*;
+use lsp_types::Location;
+use lsp_types::Position;
+use lsp_types::Range;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -16,7 +19,7 @@ use std::str::FromStr;
 pub struct Project {
     pub(crate) defs: Defs,
     pub(crate) token_length: TokenLength,
-    pub(crate) globals: Globals,
+    pub(crate) context: VisitContext,
     pub(crate) comments: HashMap<PathBuf, DocumentComments>,
 }
 
@@ -29,7 +32,7 @@ impl Project {
                 file_texts: Default::default(),
             },
             token_length: Default::default(),
-            globals: Default::default(),
+            context: Default::default(),
             comments: Default::default(),
         }
     }
@@ -72,7 +75,7 @@ impl Project {
         let mut project = Self {
             defs,
             token_length,
-            globals: Globals::new(),
+            context: VisitContext::new(),
             comments,
         };
 
@@ -265,29 +268,25 @@ pub(crate) fn get_decl_pos(d: &Def) -> Option<&Pos> {
 }
 
 impl Project {
-    pub(crate) fn mk_location(&self, pos: &Pos) -> lsp_types::Location {
-        self.defs
-            .filenames
-            .get(pos.file)
-            .map(|x| {
-                let s = x.as_ref().to_string();
-                lsp_types::Location {
-                    uri: url::Url::from_file_path(
-                        PathBuf::from_str(s.as_str()).unwrap(), //
-                    )
-                    .unwrap(),
-                    range: self.token_length.to_lsp_range(pos),
-                }
-            })
-            .unwrap()
+    pub(crate) fn mk_location(&self, pos: &Pos) -> Option<lsp_types::Location> {
+        self.defs.filenames.get(pos.file).map(|x| {
+            let s = x.as_ref().to_string();
+            lsp_types::Location {
+                uri: url::Url::from_file_path(
+                    PathBuf::from_str(s.as_str()).unwrap(), //
+                )
+                .unwrap(),
+                range: self.token_length.to_lsp_range(pos),
+            }
+        })
     }
 }
 
-pub(crate) struct Globals {
+pub(crate) struct VisitContext {
     scopes: Rc<RefCell<Vec<Scope>>>,
 }
 
-impl Default for Globals {
+impl Default for VisitContext {
     fn default() -> Self {
         let x = Self {
             scopes: Rc::new(RefCell::new(vec![Scope::new()])),
@@ -307,10 +306,11 @@ impl Scope {
     }
 }
 
-impl Globals {
+impl VisitContext {
     pub(crate) fn new() -> Self {
         Self::default()
     }
+
     fn delete_old_defs(&self, file_index: usize) {
         let mut keys = HashSet::new();
         for (k, v) in self.scopes.as_ref().borrow().first().unwrap().items.iter() {
@@ -350,6 +350,30 @@ impl Globals {
                 return Some(call_back(t.unwrap()));
             }
         }
+        None
+    }
+    pub(crate) fn query_const<R>(
+        &self,
+        name: &String,
+        mut call_back: impl FnMut(&Item) -> R,
+    ) -> Option<R> {
+        if let Some(x) = self
+            .scopes
+            .as_ref()
+            .borrow()
+            .first()
+            .unwrap()
+            .items
+            .get(name)
+            .map(|x| match x {
+                Item::Const { .. } => Some(x),
+                _ => None,
+            })
+            .flatten()
+        {
+            return Some(call_back(x));
+        }
+
         None
     }
 
@@ -576,7 +600,7 @@ impl ItemOrAccessHandler for DummyHandler {
 
 pub(crate) fn get_rule_target(p: &Pattern) -> Option<(&String, Pos)> {
     match p {
-        Pattern::Var { var, pos: _ } => None,
+        Pattern::Var { var: _, pos: _ } => None,
         Pattern::BindPattern {
             var,
             subpat: _,
@@ -596,7 +620,7 @@ pub(crate) fn get_rule_target(p: &Pattern) -> Option<(&String, Pos)> {
 pub(crate) struct ScopesGuarder(Rc<RefCell<Vec<Scope>>>);
 
 impl ScopesGuarder {
-    pub(crate) fn new(s: &Globals) -> Self {
+    pub(crate) fn new(s: &VisitContext) -> Self {
         Self(s.scopes.clone())
     }
 }

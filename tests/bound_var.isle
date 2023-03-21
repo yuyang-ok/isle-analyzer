@@ -3,3 +3,8 @@
 
 (decl A (u32 u32) u32)
 
+(extractor (A _)
+    100
+)
+
+

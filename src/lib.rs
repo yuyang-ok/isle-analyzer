@@ -9,6 +9,7 @@ pub mod context;
 pub mod document_symbol;
 pub mod goto_definition;
 pub mod hover;
+#[cfg(test)]
 pub mod ide_test;
 pub mod inlay_hitnt;
 pub mod item;

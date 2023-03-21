@@ -136,11 +136,11 @@ fn main() {
         )
         .expect("could not finish connection initialization");
     let (diag_sender, diag_receiver) = bounded::<(PathBuf, ())>(1);
-    let diag_sender = Arc::new(Mutex::new(diag_sender));
+    let _diag_sender = Arc::new(Mutex::new(diag_sender));
 
     loop {
         select! {
-            recv(diag_receiver) -> message => {
+            recv(diag_receiver) -> _message => {
 
             }
             recv(context.connection.receiver) -> message => {

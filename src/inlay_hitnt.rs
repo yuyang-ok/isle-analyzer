@@ -39,15 +39,20 @@ impl Handler {
         }
     }
     fn in_range(&self, project: &Project, pos: Pos) -> bool {
-        Location::in_range(&project.mk_location(&pos), &self.range)
+        let l = project.mk_location(&pos);
+        if let Some(l) = l {
+            Location::in_range(&l, &self.range)
+        } else {
+            false
+        }
     }
 }
 
 impl ItemOrAccessHandler for Handler {
-    fn handle_item_or_access(&mut self, p: &Project, item: &ItemOrAccess) {
+    fn handle_item_or_access(&mut self, _p: &Project, item: &ItemOrAccess) {
         match item {
-            ItemOrAccess::Item(item) => {}
-            ItemOrAccess::Access(acc) => {}
+            ItemOrAccess::Item(_item) => {}
+            ItemOrAccess::Access(_acc) => {}
         }
     }
     fn visit_body(&self) -> bool {

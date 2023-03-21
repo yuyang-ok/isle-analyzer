@@ -1,7 +1,6 @@
 use std::{
     cmp::Ordering,
-    collections::{HashMap, HashSet},
-    hash::Hash,
+    collections::{HashSet},
     path::PathBuf,
 };
 
@@ -213,8 +212,8 @@ impl<'a> AstSemanticTokenCollector<'a> {
                     modifiers: None,
                 });
             }
-            Expr::ConstInt { val, pos } => {}
-            Expr::ConstPrim { val, pos } => {
+            Expr::ConstInt { val: _, pos: _ } => {}
+            Expr::ConstPrim { val: _, pos } => {
                 self.results.push(TokenRange {
                     range: self.project.token_length.to_lsp_range(&pos),
                     token_type: TokenTypes::Number,
@@ -262,7 +261,7 @@ impl<'a> AstSemanticTokenCollector<'a> {
                 token_type: TokenTypes::Variable,
                 modifiers: None,
             }),
-            Pattern::BindPattern { var, subpat, pos } => {
+            Pattern::BindPattern { var, subpat, pos: _ } => {
                 self.results.push(TokenRange {
                     range: self.project.token_length.to_lsp_range(&var.1),
                     token_type: TokenTypes::Variable,
@@ -284,7 +283,7 @@ impl<'a> AstSemanticTokenCollector<'a> {
                     modifiers: None,
                 });
             }
-            Pattern::Term { sym, args, pos } => {
+            Pattern::Term { sym, args, pos: _ } => {
                 self.results.push(TokenRange {
                     range: self.project.token_length.to_lsp_range(&sym.1),
                     token_type: TokenTypes::Variable,
@@ -301,7 +300,7 @@ impl<'a> AstSemanticTokenCollector<'a> {
                     modifiers: None,
                 });
             }
-            Pattern::And { subpats, pos } => {
+            Pattern::And { subpats, pos: _ } => {
                 for s in subpats.iter() {
                     self.collect_pattern(s);
                 }
