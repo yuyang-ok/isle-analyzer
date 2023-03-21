@@ -153,6 +153,7 @@ impl DeclSymbol {
             subs: vec![],
         }
     }
+
     fn to_document_symbols(self) -> DocumentSymbol {
         let name = self.name.clone();
         let range = self.range;

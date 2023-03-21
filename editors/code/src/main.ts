@@ -90,25 +90,28 @@ export async function activate(
     );
     return;
   }
-  const tokenTypes = ["struct", "fun", "variable", "keyword", "string", "num", "operator"];
-  const tokenModifiers = ["declaration"];
+
+  const tokenTypes = ['struct', 'function', 'variable',
+    'keyword', 'string', 'operator', 'enumMember', 'type', 'number'];
+  const tokenModifiers = ['declaration'];
   const legend = new vscode.SemanticTokensLegend(tokenTypes, tokenModifiers);
   const provider: vscode.DocumentSemanticTokensProvider = {
     provideDocumentSemanticTokens(
-      document: vscode.TextDocument
+      document: vscode.TextDocument,
     ): vscode.ProviderResult<vscode.SemanticTokens> {
-      // analyze the document and return semantic tokens
+      // Analyze the document and return semantic tokens
       const client = context.getClient();
       if (client === undefined) {
         return undefined;
       }
-      return client.sendRequest<vscode.SemanticTokens>("textDocument/semanticTokens/full", { "textDocument": { uri: document.uri.toString() } });
+      return client.sendRequest<vscode.SemanticTokens>('textDocument/semanticTokens/full',
+        { 'textDocument': { uri: document.uri.toString() } });
 
-    }
+    },
   };
   vscode.languages.registerDocumentSemanticTokensProvider({ language: 'isle', scheme: 'file' },
-    provider, legend);
-
+    provider,
+    legend);
 
 
   // Register handlers for VS Code commands that the user explicitly issues.

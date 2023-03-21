@@ -99,3 +99,5 @@
                               base
                               (inst_result (HighLevelInst.Const offset))))))
       (LowLevelInst.Load offset (put_in_reg base)))
+
+(convert xxxx u32 u32)

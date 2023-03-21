@@ -523,7 +523,7 @@ impl TokenLength {
 }
 
 impl TokenLength {
-    fn new(mut l: Lexer) -> Result<Self, cranelift_isle::error::Errors> {
+    pub(crate) fn new(mut l: Lexer) -> Result<Self, cranelift_isle::error::Errors> {
         let mut ret = Self::default();
         while let Some((pos, t)) = l.next()? {
             ret.pos.insert(pos, Self::t_len(&t));
