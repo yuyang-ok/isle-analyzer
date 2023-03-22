@@ -91,8 +91,15 @@ export async function activate(
     return;
   }
 
-  const tokenTypes = ['struct', 'function', 'variable',
-    'keyword', 'string', 'operator', 'enumMember', 'type', 'number'];
+  const tokenTypes = ['struct',
+    'function',
+    'variable',
+    'keyword',
+    'string',
+    'operator',
+    'enumMember',
+    'type',
+    'number'];
   const tokenModifiers = ['declaration'];
   const legend = new vscode.SemanticTokensLegend(tokenTypes, tokenModifiers);
   const provider: vscode.DocumentSemanticTokensProvider = {
@@ -113,13 +120,35 @@ export async function activate(
     provider,
     legend);
 
-
   // Register handlers for VS Code commands that the user explicitly issues.
   context.registerCommand('serverVersion', serverVersion);
+
+  context.registerCommand('goto_definition', async (_context, ...args) => {
+    const loc = args[0] as { range: vscode.Range; fpath: string };
+    const t = await vscode.workspace.openTextDocument(loc.fpath);
+    await vscode.window.showTextDocument(t, { selection: loc.range, preserveFocus: false });
+  });
+
+  const d = vscode.languages.registerInlayHintsProvider({ scheme: 'file', language: 'isle' },
+    {
+      provideInlayHints(document, range) {
+        const client = context.getClient();
+        if (client === undefined) {
+          return undefined;
+        }
+        const hints = client.sendRequest<vscode.InlayHint[]>('textDocument/inlayHint',
+          { range: range, textDocument: { uri: document.uri.toString() } });
+        return hints;
+      },
+    });
+  extensionContext.subscriptions.push(d);
 
   // Configure other language features.
   context.configureLanguage();
 
   // All other utilities provided by this extension occur via the language server.
   await context.startClient();
+
+
+
 }

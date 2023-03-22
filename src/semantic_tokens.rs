@@ -1,8 +1,4 @@
-use std::{
-    cmp::Ordering,
-    collections::{HashSet},
-    path::PathBuf,
-};
+use std::{cmp::Ordering, collections::HashSet, path::PathBuf};
 
 use crate::project::{AstProvider, Project, TokenLength};
 
@@ -124,6 +120,21 @@ macro_rules! none_as_modifier {
     }};
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum CollectPatternType {
+    Extrator,
+    Matcher,
+}
+
+impl CollectPatternType {
+    fn to_modifier(self) -> Option<TokenModifier> {
+        match self {
+            CollectPatternType::Extrator => None,
+            CollectPatternType::Matcher => Some(TokenModifier::Declaration),
+        }
+    }
+}
+
 impl<'a> AstSemanticTokenCollector<'a> {
     fn new(p: &'a Project) -> Self {
         Self {
@@ -185,11 +196,12 @@ impl<'a> AstSemanticTokenCollector<'a> {
     }
 
     fn collect_rule(&mut self, d: &Rule) {
-        self.collect_pattern(&d.pattern);
+        self.collect_pattern(&d.pattern, CollectPatternType::Matcher);
         for i in d.iflets.iter() {
-            self.collect_pattern(&i.pattern);
+            self.collect_pattern(&i.pattern, CollectPatternType::Matcher);
             self.collect_expr(&i.expr);
         }
+
         self.collect_expr(&d.expr);
     }
 
@@ -251,23 +263,27 @@ impl<'a> AstSemanticTokenCollector<'a> {
                 modifiers: Some(TokenModifier::Declaration),
             });
         }
-        self.collect_pattern(&d.template);
+        self.collect_pattern(&d.template, CollectPatternType::Extrator);
     }
 
-    fn collect_pattern(&mut self, p: &Pattern) {
+    fn collect_pattern(&mut self, p: &Pattern, mode: CollectPatternType) {
         match p {
             Pattern::Var { var, .. } => self.results.push(TokenRange {
                 range: self.project.token_length.to_lsp_range(&var.1),
                 token_type: TokenTypes::Variable,
-                modifiers: None,
+                modifiers: mode.to_modifier(),
             }),
-            Pattern::BindPattern { var, subpat, pos: _ } => {
+            Pattern::BindPattern {
+                var,
+                subpat,
+                pos: _,
+            } => {
                 self.results.push(TokenRange {
                     range: self.project.token_length.to_lsp_range(&var.1),
                     token_type: TokenTypes::Variable,
                     modifiers: None,
                 });
-                self.collect_pattern(subpat.as_ref());
+                self.collect_pattern(subpat.as_ref(), mode);
             }
             Pattern::ConstInt { val: _val, pos } => {
                 self.results.push(TokenRange {
@@ -290,7 +306,7 @@ impl<'a> AstSemanticTokenCollector<'a> {
                     modifiers: None,
                 });
                 for a in args.iter() {
-                    self.collect_pattern(a);
+                    self.collect_pattern(a, mode);
                 }
             }
             Pattern::Wildcard { pos } => {
@@ -302,7 +318,7 @@ impl<'a> AstSemanticTokenCollector<'a> {
             }
             Pattern::And { subpats, pos: _ } => {
                 for s in subpats.iter() {
-                    self.collect_pattern(s);
+                    self.collect_pattern(s, mode);
                 }
             }
             Pattern::MacroArg { .. } => {}
@@ -476,7 +492,7 @@ impl VecST {
         mid: Option<impl Into<u32>>,
     ) {
         debug_assert!(
-            range.start.line == range.end.line && range.start.character < range.end.character
+            range.start.line == range.end.line && range.start.character <= range.end.character
         );
         let tt = tt.into();
         let mid = mid.map(|x| x.into()).unwrap_or_default();

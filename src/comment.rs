@@ -1,6 +1,6 @@
 use std::{cmp::Ordering, collections::HashMap};
 
-use cranelift_isle::{lexer::Pos};
+use cranelift_isle::lexer::Pos;
 
 #[derive(Default)]
 pub struct CommentExtrator {
@@ -102,8 +102,8 @@ impl DocumentComments {
         impl<'a> PosOrComment<'a> {
             fn get_line(&self) -> u32 {
                 match self {
-                    PosOrComment::Pos(x) => x.line as u32,
-                    PosOrComment::Comment(x) => (*x).line,
+                    PosOrComment::Pos(x) => (x.line as u32) - 1, // Pos start with 1
+                    PosOrComment::Comment(x) => (*x).line,       // Comment starts with 0
                 }
             }
         }
@@ -117,6 +117,7 @@ impl DocumentComments {
                 Self::Comment(value)
             }
         }
+
         // first sort.
         let mut s = Vec::with_capacity(pos.len() + extractor.comments.len());
         pos.iter().for_each(|x| s.push(PosOrComment::from(x)));

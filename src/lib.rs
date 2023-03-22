@@ -17,7 +17,6 @@ pub mod project;
 pub mod project_visit;
 pub mod references;
 pub mod semantic_tokens;
-pub mod types;
 pub mod utils;
 
 pub fn readable_location(l: &Location) -> String {

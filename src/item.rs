@@ -26,11 +26,42 @@ impl Into<Access> for ItemOrAccess {
 
 #[derive(Clone)]
 pub enum Item {
-    Type { ty: Type },
-    Decl { decl: Decl, kind: DeclKind },
+    Type {
+        ty: Type,
+    },
+    Decl {
+        decl: Decl,
+        kind: DeclKind,
+    },
     Dummy,
-    Const { name: Ident, ty: Ident },
-    Var { name: Ident, ty: String },
+    Const {
+        name: Ident,
+        /// The location define the type.
+        ty: Ident,
+    },
+    Var {
+        name: Ident,
+        // the location define the Type.
+        ty: Ident,
+    },
+    EnumMemberName {
+        name: Ident,
+    },
+    EnumMemberField {
+        name: Ident,
+    },
+    EnumVariant {
+        v: Variant,
+    },
+}
+
+impl Item {
+    pub(crate) fn item_is_ty(&self) -> Option<&Type> {
+        match self {
+            Item::Type { ty } => Some(ty),
+            _ => None,
+        }
+    }
 }
 
 impl Default for Item {
@@ -46,6 +77,10 @@ pub const UNKNOWN_POS: Pos = Pos {
     col: 0,
 };
 
+lazy_static! {
+    pub static ref UNKNOWN_TYPE: Ident = Ident("".to_string(), UNKNOWN_POS);
+}
+
 impl Item {
     pub(crate) fn def_loc(&self) -> Pos {
         match self {
@@ -54,6 +89,9 @@ impl Item {
             Item::Dummy => UNKNOWN_POS,
             Item::Const { name, ty: _ } => name.1,
             Item::Var { name, ty: _ } => name.1,
+            Item::EnumMemberName { name } => name.1,
+            Item::EnumMemberField { name } => name.1,
+            Item::EnumVariant { v } => v.name.1,
         }
     }
 
@@ -77,39 +115,51 @@ impl DeclKind {
     pub(crate) const CONSTRUCTOR: u8 = 2;
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum AccessKind {
+    AppleType,
+    DeclExtern,
+    ApplyEORC,
+    ExtractVar,
+    ApplyConst,
+    ImplExtractor,
+    ImplConstructor,
+    ApplyVariant,
+    ApplyVar,
+}
+
+impl AccessKind {
+    fn to_static_str(self) -> &'static str {
+        match self {
+            AccessKind::AppleType => "apply type",
+            AccessKind::DeclExtern => "decl extern",
+            AccessKind::ApplyEORC => "apply extrator",
+            AccessKind::ExtractVar => "extract var",
+            AccessKind::ApplyConst => "apply const",
+            AccessKind::ImplExtractor => "impl extractor",
+            AccessKind::ApplyVariant => "apply enum member",
+            AccessKind::ApplyVar => "apply var",
+            AccessKind::ImplConstructor => "impl constructor",
+        }
+    }
+}
+
 #[derive(Clone)]
-pub enum Access {
-    AppleType { access: Ident, def: Item },
-    DeclExtern { access: Ident, def: Item },
-    ApplyExtractor { access: Ident, def: Item },
-    ExtractVar { access: Ident, def: Item },
-    ApplyConst { access: Ident, def: Item },
-    ImplExtractor { access: Ident, def: Item },
+pub struct Access {
+    pub(crate) access: Ident,
+    pub(crate) def: Item,
+    pub(crate) kind: AccessKind,
 }
 
 impl Access {
     pub fn def_item(&self) -> &Item {
-        match self {
-            Access::AppleType { def, .. } => def,
-            Access::DeclExtern { def, .. } => def,
-            Access::ApplyExtractor { def, .. } => def,
-            Access::ExtractVar { def, .. } => def,
-            Access::ApplyConst { def, .. } => def,
-            Access::ImplExtractor { def, .. } => def,
-        }
+        &self.def
     }
 }
 
 impl Access {
     pub(crate) fn access_def_loc(&self) -> (Pos, Pos) {
-        match self {
-            Access::AppleType { access, def } => (access.1, def.def_loc()),
-            Access::DeclExtern { access, def } => (access.1, def.def_loc()),
-            Access::ApplyExtractor { access, def } => (access.1, def.def_loc()),
-            Access::ApplyConst { access, def } => (access.1, def.def_loc()),
-            Access::ExtractVar { access, def } => (access.1, def.def_loc()),
-            Access::ImplExtractor { access, def } => (access.1, def.def_loc()),
-        }
+        (self.access.1, self.def.def_loc())
     }
 }
 
@@ -130,23 +180,17 @@ impl std::fmt::Display for Item {
             Item::Dummy => write!(f, "dummy"),
             Item::Const { name, ty: _ } => write!(f, "item_const:{}", name.0.as_str()),
             Item::Var { name, ty: _ } => write!(f, "item_var:{}", name.0.as_str()),
+            Item::EnumMemberName { name } => write!(f, "enum_member:{}", name.0.as_str()),
+            Item::EnumMemberField { name } => write!(f, "enum_field:{}", name.0.as_str()),
+            Item::EnumVariant { v } => write!(f, "enum_variant:{}", v.name.0),
         }
     }
 }
 
 impl std::fmt::Display for Access {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Access::AppleType { access, def } => write!(f, "apply type {}->{}", access.0, def),
-            Access::DeclExtern { access, def } => write!(f, "decl extern {}->{}", access.0, def),
-            Access::ApplyExtractor { access, def } => {
-                write!(f, "apply extrator {}->{}", access.0, def)
-            }
-            Access::ExtractVar { access, def } => write!(f, "extract var {}->{}", access.0, def),
-            Access::ApplyConst { access, def } => write!(f, "apply const {}->{}", access.0, def),
-            Access::ImplExtractor { access, def } => {
-                write!(f, "impl extractor {}->{}", access.0, def)
-            }
-        }
+        let access = &self.access;
+        let def = &self.def;
+        write!(f, "{} {}->{}", self.kind.to_static_str(), access.0, def)
     }
 }

@@ -3,6 +3,7 @@ use crate::utils::GetPosition;
 use super::context::*;
 use super::item::*;
 use super::project::*;
+use cranelift_isle::ast::Ident;
 use cranelift_isle::lexer::Pos;
 use lsp_server::*;
 use lsp_types::*;
@@ -38,20 +39,40 @@ impl Handler {
             reuslts: Default::default(),
         }
     }
-    fn in_range(&self, project: &Project, pos: Pos) -> bool {
+
+    fn in_range(&self, project: &Project, pos: Pos) -> Option<Location> {
         let l = project.mk_location(&pos);
         if let Some(l) = l {
-            Location::in_range(&l, &self.range)
+            if Location::in_range(&l, &self.range) {
+                Some(l)
+            } else {
+                None
+            }
         } else {
-            false
+            None
         }
     }
 }
 
 impl ItemOrAccessHandler for Handler {
-    fn handle_item_or_access(&mut self, _p: &Project, item: &ItemOrAccess) {
+    fn handle_item_or_access(&mut self, p: &Project, item: &ItemOrAccess) {
         match item {
-            ItemOrAccess::Item(_item) => {}
+            ItemOrAccess::Item(item) => match item {
+                Item::Var { name, ty } => {
+                    let name_loc = self.in_range(p, name.1);
+                    if let Some(name_loc) = name_loc {
+                        self.reuslts.push(mk_inlay_hits(
+                            Position {
+                                line: name_loc.range.end.line,
+                                character: name_loc.range.end.character,
+                            },
+                            ty_inlay_hints_label_parts(ty, p),
+                            InlayHintKind::TYPE,
+                        ));
+                    }
+                }
+                _ => {}
+            },
             ItemOrAccess::Access(_acc) => {}
         }
     }
@@ -80,4 +101,57 @@ fn mk_inlay_hits(pos: Position, label: InlayHintLabel, kind: InlayHintKind) -> I
         padding_right: Some(true),
         data: None,
     }
+}
+
+/// There command should implemented in `LSP` client.
+pub enum MoveAnalyzerClientCommands {
+    GotoDefinition(Location),
+}
+
+impl MoveAnalyzerClientCommands {
+    pub(crate) fn to_lsp_command(self) -> Command {
+        match self {
+            MoveAnalyzerClientCommands::GotoDefinition(x) => Command::new(
+                "Goto Definition".to_string(),
+                "isle-analyzer.goto_definition".to_string(),
+                Some(vec![serde_json::to_value(PathAndRange::from(&x)).unwrap()]),
+            ),
+        }
+    }
+}
+
+#[derive(Clone, serde::Serialize)]
+pub struct PathAndRange {
+    range: Range,
+    fpath: String,
+}
+
+impl From<&Location> for PathAndRange {
+    fn from(value: &Location) -> Self {
+        Self {
+            range: value.range,
+            fpath: value
+                .uri
+                .to_file_path()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_string(),
+        }
+    }
+}
+
+fn ty_inlay_hints_label_parts(ty: &Ident, p: &Project) -> InlayHintLabel {
+    InlayHintLabel::LabelParts(vec![InlayHintLabelPart {
+        value: ty.0.clone(),
+        tooltip: Some(InlayHintLabelPartTooltip::String(
+            "Go To Definition.".to_string(),
+        )),
+        location: None,
+        command: if let Some(loc) = p.mk_location(&p.context.query_item_clone(&ty.0).def_loc()) {
+            Some(MoveAnalyzerClientCommands::GotoDefinition(loc).to_lsp_command())
+        } else {
+            None
+        },
+    }])
 }

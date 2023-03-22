@@ -6,9 +6,6 @@ use cranelift_isle::ast::*;
 use cranelift_isle::error::Errors;
 use cranelift_isle::lexer::*;
 use cranelift_isle::parser::*;
-use lsp_types::Location;
-use lsp_types::Position;
-use lsp_types::Range;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -59,6 +56,20 @@ impl Project {
         defs.with_def(|x| {
             if let Some(pos) = get_decl_pos(x) {
                 poes.push(pos.clone());
+                match x {
+                    Def::Type(ty) => match &ty.ty {
+                        TypeValue::Primitive(_, _) => {}
+                        TypeValue::Enum(vs, _) => {
+                            for v in vs.iter() {
+                                poes.push(v.name.1);
+                                for f in v.fields.iter() {
+                                    poes.push(f.name.1);
+                                }
+                            }
+                        }
+                    },
+                    _ => {}
+                }
             }
         });
         DocumentComments::new(&e, &poes)
@@ -352,6 +363,10 @@ impl VisitContext {
         }
         None
     }
+    pub(crate) fn query_item_clone(&self, name: &String) -> Item {
+        self.query_item(name, |x| x.clone()).unwrap_or_default()
+    }
+
     pub(crate) fn query_const<R>(
         &self,
         name: &String,
@@ -375,6 +390,9 @@ impl VisitContext {
         }
 
         None
+    }
+    pub(crate) fn query_const_clone(&self, name: &String) -> Item {
+        self.query_const(name, |x| x.clone()).unwrap_or_default()
     }
 
     pub(crate) fn fix_decl_type(&self, name: &String, decl_ty: u8) {
@@ -550,18 +568,25 @@ impl TokenLength {
     pub(crate) fn new(mut l: Lexer) -> Result<Self, cranelift_isle::error::Errors> {
         let mut ret = Self::default();
         while let Some((pos, t)) = l.next()? {
-            ret.pos.insert(pos, Self::t_len(&t));
+            for s in Self::t_len(&t, pos) {
+                ret.pos.insert(s.pos, s.symbol_len());
+            }
         }
         Ok(ret)
     }
-    fn t_len(t: &Token) -> usize {
+
+    fn t_len(t: &Token, pos: Pos) -> Vec<SymbolAndPos> {
+        let empty = Vec::new();
         match t {
-            Token::LParen => 1,
-            Token::RParen => 1,
-            Token::Symbol(x) => x.len(),
-            Token::Int(_) => 0, //  no IDE support on this.
-            Token::At => 1,
-        }
+            Token::LParen => {}
+            Token::RParen => {}
+            Token::Symbol(x) => {
+                return SplitedSymbol::from(&(x.clone(), pos)).to_vec();
+            }
+            Token::Int(_) => {}
+            Token::At => {}
+        };
+        empty
     }
 
     pub(crate) fn update_token_length(
@@ -580,7 +605,9 @@ impl TokenLength {
         }
         while let Some((mut pos, t)) = lexer.next()? {
             pos.file = file_index;
-            self.pos.insert(pos, Self::t_len(&t));
+            for s in Self::t_len(&t, pos) {
+                self.pos.insert(s.pos, s.symbol_len());
+            }
         }
         Ok(())
     }
@@ -628,5 +655,135 @@ impl ScopesGuarder {
 impl Drop for ScopesGuarder {
     fn drop(&mut self) {
         self.0.as_ref().borrow_mut().pop().unwrap();
+    }
+}
+
+#[derive(PartialEq, Eq, Debug, Clone)]
+pub struct SymbolAndPos {
+    pub symbol: String,
+    pub pos: Pos,
+}
+
+impl Into<Ident> for SymbolAndPos {
+    fn into(self) -> Ident {
+        let pos = self.pos;
+        Ident(self.symbol, pos)
+    }
+}
+
+impl SymbolAndPos {
+    pub(crate) fn symbol_len(&self) -> usize {
+        self.symbol.len()
+    }
+}
+
+/// `ISLE` lexer compsite xxx and yyy together
+/// like xxx.yyy
+/// not a seperate token
+/// but one token `xxx.yyy`
+#[derive(PartialEq, Eq, Debug, Clone)]
+pub(crate) enum SplitedSymbol {
+    One(SymbolAndPos),
+    Two([SymbolAndPos; 2]),
+}
+
+impl SplitedSymbol {
+    pub(crate) fn to_vec(self) -> Vec<SymbolAndPos> {
+        match self {
+            SplitedSymbol::One(x) => vec![x],
+            SplitedSymbol::Two(two) => vec![two[0].clone(), two[1].clone()],
+        }
+    }
+}
+impl From<&Ident> for SplitedSymbol {
+    fn from(value: &Ident) -> Self {
+        Self::from(&(value.0.clone(), value.1))
+    }
+}
+impl From<&(String, Pos)> for SplitedSymbol {
+    fn from(value: &(String, Pos)) -> Self {
+        let (s, pos) = value;
+        let mut index = None;
+        for (i, s) in s.as_bytes().iter().enumerate() {
+            if *s == 46
+            // ascii for  '.'
+            {
+                index = Some(i);
+            }
+        }
+        match index {
+            Some(index) => {
+                let r = [
+                    SymbolAndPos {
+                        symbol: (&s.as_str()[0..index]).to_string(),
+                        pos: pos.clone(),
+                    },
+                    SymbolAndPos {
+                        symbol: (&s.as_str()[index + 1..]).to_string(),
+                        pos: Pos {
+                            file: pos.file,
+                            offset: pos.offset + index + 1,
+                            line: pos.line,
+                            col: pos.col + index + 1,
+                        },
+                    },
+                ];
+                Self::Two(r)
+            }
+            None => Self::One(SymbolAndPos {
+                symbol: s.clone(),
+                pos: pos.clone(),
+            }),
+        }
+    }
+}
+
+#[cfg(test)]
+#[test]
+fn test_splited_symbol() {
+    {
+        let s = "xxx.yyy";
+        let pos = Pos {
+            file: 2,
+            offset: 0,
+            line: 0,
+            col: 0,
+        };
+        let x = SplitedSymbol::from(&(s.to_string(), pos));
+        assert_eq!(
+            x,
+            SplitedSymbol::Two([
+                SymbolAndPos {
+                    symbol: "xxx".to_string(),
+                    pos
+                },
+                SymbolAndPos {
+                    symbol: "yyy".to_string(),
+                    pos: Pos {
+                        file: pos.file,
+                        offset: pos.offset + 4,
+                        line: pos.line,
+                        col: pos.col + 4,
+                    }
+                }
+            ])
+        );
+    }
+    {
+        let s = "xxx";
+        let pos = Pos {
+            file: 2,
+            offset: 0,
+            line: 0,
+            col: 0,
+        };
+        let x = SplitedSymbol::from(&(s.to_string(), pos));
+        assert_eq!(
+            x,
+            SplitedSymbol::One(SymbolAndPos {
+                symbol: s.to_string(),
+                pos
+            })
+        );
     }
 }

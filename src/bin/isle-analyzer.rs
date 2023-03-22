@@ -5,6 +5,7 @@ use isle_analyzer::context::*;
 use isle_analyzer::document_symbol;
 use isle_analyzer::goto_definition;
 use isle_analyzer::hover;
+use isle_analyzer::inlay_hitnt;
 use isle_analyzer::project::Project;
 use isle_analyzer::references;
 use isle_analyzer::semantic_tokens;
@@ -70,12 +71,6 @@ fn main() {
         text_document_sync: Some(TextDocumentSyncCapability::Options(
             TextDocumentSyncOptions {
                 open_close: Some(true),
-                // TODO: We request that the language server client send us the entire text of any
-                // files that are modified. We ought to use the "incremental" sync kind, which would
-                // have clients only send us what has changed and where, thereby requiring far less
-                // data be sent "over the wire." However, to do so, our language server would need
-                // to be capable of applying deltas to its view of the client's open files. See the
-                // 'move_analyzer::vfs' module for details.
                 change: Some(TextDocumentSyncKind::FULL),
                 will_save: None,
                 will_save_wait_until: None,
@@ -168,7 +163,7 @@ fn main() {
 }
 
 fn on_request(context: &mut Context, request: &lsp_server::Request) {
-    log::info!("receive method:{}", request.method.as_str());
+    log::error!("receive method:{}", request.method.as_str());
     match request.method.as_str() {
         // lsp_types::request::Completion::METHOD => on_completion_request(context, request),
         lsp_types::request::GotoDefinition::METHOD => {
@@ -186,6 +181,9 @@ fn on_request(context: &mut Context, request: &lsp_server::Request) {
         }
         lsp_types::request::SemanticTokensFullRequest::METHOD => {
             semantic_tokens::on_senantic_tokens(context, request);
+        }
+        lsp_types::request::InlayHintRequest::METHOD => {
+            inlay_hitnt::on_inlay_hints(context, request);
         }
         _ => log::error!("handle request '{}' from client", request.method),
     }

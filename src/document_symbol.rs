@@ -167,7 +167,7 @@ impl DeclSymbol {
         DocumentSymbol {
             name,
             detail: None,
-            kind: SymbolKind::OPERATOR,
+            kind: SymbolKind::OBJECT,
             tags: None,
             deprecated: None,
             range,

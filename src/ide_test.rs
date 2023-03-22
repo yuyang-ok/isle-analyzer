@@ -2,6 +2,7 @@ use super::goto_definition;
 use super::project::*;
 use super::*;
 use crate::utils::*;
+use cranelift_isle::lexer::Lexer;
 use log::*;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -43,4 +44,12 @@ fn goto_definition() {
         goto_definition::Handler::new(url::Url::from_file_path(file.clone()).unwrap(), 2, 9);
     p.run_visitor_for_file(&file, &mut handler);
     eprintln!("-----> {:?}", readable_location(&handler.result.unwrap()));
+}
+
+#[test]
+fn xxx() {
+    let mut l = Lexer::from_str("xxxx.yyyy", "").unwrap();
+    while let Some((_pos, t)) = l.next().unwrap() {
+        eprintln!("{:?}", t);
+    }
 }
