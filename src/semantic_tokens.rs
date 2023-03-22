@@ -12,28 +12,6 @@ use cranelift_isle::{
 use lsp_server::*;
 use lsp_types::*;
 
-lazy_static! {
-    static ref KEYWORDS: HashSet<&'static str> = {
-        let mut t = HashSet::new();
-        t.insert("rule");
-        t.insert("convert");
-        t.insert("extractor");
-        t.insert("extern");
-        t.insert("decl");
-        t.insert("infallible");
-        t.insert("pragma");
-        t.insert("nodebug");
-        t.insert("pure");
-        t.insert("multi");
-        t.insert("partial");
-        t.insert("constructor");
-        t.insert("type");
-        t.insert("primitive");
-        t.insert("enum");
-        t
-    };
-}
-
 /// Handles go-to-def request of the language server.
 pub fn on_senantic_tokens(context: &Context, request: &Request) {
     let parameters = serde_json::from_value::<SemanticTokensParams>(request.params.clone())
@@ -93,7 +71,7 @@ fn collect_keywords(path: &PathBuf) -> Result<Vec<TokenRange>, Errors> {
     while let Some((pos, t)) = lexer.next()? {
         match t {
             Token::Symbol(s) => {
-                if KEYWORDS.contains(s.as_str()) {
+                if super::KEYWORDS.contains(s.as_str()) {
                     ret.push(TokenRange {
                         range: token_length.to_lsp_range(&pos),
                         token_type: TokenTypes::Keyword,

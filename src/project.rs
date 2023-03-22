@@ -294,7 +294,7 @@ impl Project {
 }
 
 pub(crate) struct VisitContext {
-    scopes: Rc<RefCell<Vec<Scope>>>,
+    pub(crate) scopes: Rc<RefCell<Vec<Scope>>>,
 }
 
 impl Default for VisitContext {
@@ -307,8 +307,8 @@ impl Default for VisitContext {
 }
 
 #[derive(Default, Clone)]
-struct Scope {
-    items: HashMap<String, Item>,
+pub(crate) struct Scope {
+    pub(crate) items: HashMap<String, Item>,
 }
 
 impl Scope {

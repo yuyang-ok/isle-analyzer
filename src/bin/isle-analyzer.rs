@@ -1,6 +1,7 @@
 use crossbeam::channel::bounded;
 use crossbeam::channel::select;
 
+use isle_analyzer::completion::on_completion_request;
 use isle_analyzer::context::*;
 use isle_analyzer::document_symbol;
 use isle_analyzer::goto_definition;
@@ -9,7 +10,6 @@ use isle_analyzer::inlay_hitnt;
 use isle_analyzer::project::Project;
 use isle_analyzer::references;
 use isle_analyzer::semantic_tokens;
-
 use log::*;
 use lsp_types::notification::Notification;
 use lsp_types::request::Request;
@@ -83,27 +83,24 @@ fn main() {
             },
         )),
         hover_provider: Some(HoverProviderCapability::Simple(true)),
-
-        // The server provides completions as a user is typing.
-        // completion_provider: Some(CompletionOptions {
-        //     resolve_provider: None,
-        //     trigger_characters: Some({
-        //         let mut c = vec![":".to_string(), ".".to_string()];
-        //         for x in 'a'..='z' {
-        //             c.push(String::from(x as char));
-        //         }
-        //         for x in 'A'..='Z' {
-        //             c.push(String::from(x as char));
-        //         }
-        //         c.push(String::from("0"));
-        //         c
-        //     }),
-        //     all_commit_characters: None,
-        //     work_done_progress_options: WorkDoneProgressOptions {
-        //         work_done_progress: None,
-        //     },
-        //     completion_item: None,
-        // }),
+        completion_provider: Some(CompletionOptions {
+            resolve_provider: None,
+            trigger_characters: Some({
+                let mut c = vec![".".to_string()];
+                for x in 'a'..='z' {
+                    c.push(String::from(x as char));
+                }
+                for x in 'A'..='Z' {
+                    c.push(String::from(x as char));
+                }
+                c
+            }),
+            all_commit_characters: None,
+            work_done_progress_options: WorkDoneProgressOptions {
+                work_done_progress: None,
+            },
+            completion_item: None,
+        }),
         definition_provider: Some(OneOf::Left(true)),
         type_definition_provider: Some(TypeDefinitionProviderCapability::Simple(true)),
         references_provider: Some(OneOf::Left(true)),
@@ -165,7 +162,7 @@ fn main() {
 fn on_request(context: &mut Context, request: &lsp_server::Request) {
     log::error!("receive method:{}", request.method.as_str());
     match request.method.as_str() {
-        // lsp_types::request::Completion::METHOD => on_completion_request(context, request),
+        lsp_types::request::Completion::METHOD => on_completion_request(context, request),
         lsp_types::request::GotoDefinition::METHOD => {
             goto_definition::on_go_to_def_request(context, request);
         }

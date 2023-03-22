@@ -7,7 +7,6 @@ impl Project {
         provider.with_pragma(|_| {
             // Nothing here.
         });
-
         // handle primitive type first.
         provider.with_type(|x| {
             match x.ty {
