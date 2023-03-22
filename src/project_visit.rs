@@ -493,17 +493,7 @@ impl Project {
                         }
                         let item = ItemOrAccess::Item(Item::Var {
                             name: d.var.clone(),
-                            ty: self
-                                .context
-                                .query_item(&d.ty.0, |x| {
-                                    if let Some(ty) = x.item_is_ty() {
-                                        Some(ty.name.clone())
-                                    } else {
-                                        None
-                                    }
-                                })
-                                .flatten()
-                                .unwrap_or(d.ty.clone()),
+                            ty: d.ty.clone(),
                         });
                         handler.handle_item_or_access(self, &item);
                         if handler.finished() {

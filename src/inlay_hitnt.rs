@@ -66,7 +66,7 @@ impl ItemOrAccessHandler for Handler {
                                 line: name_loc.range.end.line,
                                 character: name_loc.range.end.character,
                             },
-                            ty_inlay_hints_label_parts(ty, p),
+                            ty_inlay_hints_label_parts(&ty.0, p),
                             InlayHintKind::TYPE,
                         ));
                     }
@@ -141,14 +141,14 @@ impl From<&Location> for PathAndRange {
     }
 }
 
-fn ty_inlay_hints_label_parts(ty: &Ident, p: &Project) -> InlayHintLabel {
+fn ty_inlay_hints_label_parts(ty: &String, p: &Project) -> InlayHintLabel {
     InlayHintLabel::LabelParts(vec![InlayHintLabelPart {
-        value: ty.0.clone(),
+        value: ty.clone(),
         tooltip: Some(InlayHintLabelPartTooltip::String(
             "Go To Definition.".to_string(),
         )),
         location: None,
-        command: if let Some(loc) = p.mk_location(&p.context.query_item_clone(&ty.0).def_loc()) {
+        command: if let Some(loc) = p.mk_location(&p.context.query_item_clone(ty).def_loc()) {
             Some(MoveAnalyzerClientCommands::GotoDefinition(loc).to_lsp_command())
         } else {
             None
