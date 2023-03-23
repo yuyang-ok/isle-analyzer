@@ -7,6 +7,7 @@ pub mod comment;
 pub mod completion;
 pub mod context;
 pub mod document_symbol;
+pub mod fmt;
 pub mod goto_definition;
 pub mod hover;
 #[cfg(test)]

@@ -234,7 +234,6 @@ impl ItemOrAccessHandler for Handler {
                                 })
                             }
                         }
-
                         push_completion_items(self, items);
                     }
                     AccessKind::ApplyVar => {

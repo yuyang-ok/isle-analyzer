@@ -432,17 +432,22 @@ impl Project {
                         Item::Type { ty } => match &ty.ty {
                             TypeValue::Primitive(_, _) => {}
                             TypeValue::Enum(variants, _) => {
-                                let v = find_variant(variants, y.symbol.as_str());
-                                if let Some(v) = v {
-                                    let item = ItemOrAccess::Access(Access {
-                                        access: y.clone().into(),
-                                        kind: AccessKind::ApplyVariant(ty.name.0.clone()),
-                                        def: Item::EnumVariant { v: v.clone() },
+                                let v = find_variant(variants, y.symbol.as_str())
+                                    .map(|x| x.clone())
+                                    .unwrap_or(Variant {
+                                        name: Ident(y.symbol.clone(), y.pos),
+                                        fields: vec![],
+                                        pos: y.pos,
                                     });
-                                    handler.handle_item_or_access(self, &item);
-                                    if handler.finished() {
-                                        return;
-                                    }
+
+                                let item = ItemOrAccess::Access(Access {
+                                    access: y.clone().into(),
+                                    kind: AccessKind::ApplyVariant(x.symbol.clone()),
+                                    def: Item::EnumVariant { v },
+                                });
+                                handler.handle_item_or_access(self, &item);
+                                if handler.finished() {
+                                    return;
                                 }
                             }
                         },
@@ -450,6 +455,7 @@ impl Project {
                     };
                 }
             };
+
         match e {
             Expr::Term { sym, args, .. } => {
                 handle_term(sym, handler);
@@ -595,18 +601,21 @@ impl Project {
                             Item::Type { ty } => match &ty.ty {
                                 TypeValue::Primitive(_, _) => {}
                                 TypeValue::Enum(variants, _) => {
-                                    let v = find_variant(variants, y.symbol.as_str());
-                                    if let Some(v) = v {
-                                        let item = ItemOrAccess::Access(Access {
-                                            kind: AccessKind::ApplyVariant(ty.name.0.clone()),
-                                            access: y.clone().into(),
-                                            def: Item::EnumVariant { v: v.clone() },
+                                    let v = find_variant(variants, y.symbol.as_str())
+                                        .map(|x| x.clone())
+                                        .unwrap_or(Variant {
+                                            name: Ident(y.symbol.clone(), y.pos),
+                                            fields: vec![],
+                                            pos: y.pos,
                                         });
-
-                                        handler.handle_item_or_access(self, &item);
-                                        if handler.finished() {
-                                            return;
-                                        }
+                                    let item = ItemOrAccess::Access(Access {
+                                        kind: AccessKind::ApplyVariant(x.symbol.clone()),
+                                        access: y.clone().into(),
+                                        def: Item::EnumVariant { v },
+                                    });
+                                    handler.handle_item_or_access(self, &item);
+                                    if handler.finished() {
+                                        return;
                                     }
                                 }
                             },
