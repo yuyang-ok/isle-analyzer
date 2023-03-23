@@ -135,7 +135,6 @@ impl DocumentComments {
         let mut tmp = Vec::new();
         fn make_document_symbol_comment(x: &Vec<&Comment>) -> String {
             let mut ret = String::new();
-
             for (index, c) in x.iter().enumerate() {
                 let kill_ret = if index > 0 {
                     x.get(index - 1)

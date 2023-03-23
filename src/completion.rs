@@ -6,7 +6,11 @@ use super::item::*;
 use super::project::*;
 use super::utils::*;
 use crate::context::Context;
+use crate::project;
+use cranelift_isle::ast::Decl;
+use cranelift_isle::ast::Ident;
 use cranelift_isle::ast::Type;
+use cranelift_isle::ast::TypeValue;
 use lsp_server::*;
 use lsp_types::*;
 use std::vec;
@@ -46,8 +50,14 @@ pub fn on_completion_request(context: &Context, request: &Request) {
     let completion_on_def = handler.completion_on_def;
     let mut result = handler.result.unwrap_or(vec![]);
     if result.len() == 0 && completion_on_def == false {
-        result = keywords();
+        context.project.context.all_top_items(|x| {
+            if let Some(c) = item_to_completion_item(&x) {
+                result.push(c);
+            }
+        });
+        result.extend(keywords().into_iter());
     }
+
     let ret = Some(CompletionResponse::Array(result));
     let r = Response::new_ok(request.id.clone(), serde_json::to_value(ret).unwrap());
     context
@@ -91,7 +101,6 @@ impl ItemOrAccessHandler for Handler {
             if visitor.result.is_none() {
                 visitor.result = Some(vec![]);
             }
-
             items
                 .into_iter()
                 .for_each(|x| visitor.result.as_mut().unwrap().push(x));
@@ -106,28 +115,140 @@ impl ItemOrAccessHandler for Handler {
                     }
                 }
             }
-            ItemOrAccess::Access(access) => match access.kind {
-                AccessKind::AppleType => {
-                    let mut tys = vec![];
-                    p.context.all_types(|x| {
-                        tys.push(CompletionItem {
-                            label: x.name.0.clone(),
-                            kind: Some(CompletionItemKind::STRUCT),
-                            ..Default::default()
-                        })
-                    });
-                    push_completion_items(self, tys);
+            ItemOrAccess::Access(access) => {
+                let access_loc = p.mk_location(&access.access_def_loc().0);
+                if access_loc
+                    .as_ref()
+                    .map(|l| self.match_loc(l))
+                    .unwrap_or(false)
+                    == false
+                {
+                    return;
                 }
+                match &access.kind {
+                    AccessKind::AppleType => {
+                        let mut items = vec![];
+                        p.context.all_types(|x| {
+                            items.push(CompletionItem {
+                                label: x.name.0.clone(),
+                                kind: Some(CompletionItemKind::STRUCT),
+                                ..Default::default()
+                            })
+                        });
+                        push_completion_items(self, items);
+                    }
+                    AccessKind::DeclExtern => {
+                        let mut items = vec![];
+                        p.context.all_decl(|x| {
+                            items.push(CompletionItem {
+                                label: x.term.0.clone(),
+                                kind: Some(CompletionItemKind::CLASS),
+                                ..Default::default()
+                            })
+                        });
+                        push_completion_items(self, items);
+                    }
+                    AccessKind::ApplyEORC => {
+                        let mut items = vec![];
+                        p.context.all_decl(|x| {
+                            items.push(CompletionItem {
+                                label: x.term.0.clone(),
+                                kind: Some(CompletionItemKind::CLASS),
+                                ..Default::default()
+                            })
+                        });
+                        p.context.all_types(|x| {
+                            if matches!(&x.ty, TypeValue::Enum(_, _)) {
+                                items.push(CompletionItem {
+                                    label: x.name.0.clone(),
+                                    kind: Some(CompletionItemKind::CLASS),
+                                    ..Default::default()
+                                })
+                            }
+                        });
+                        push_completion_items(self, items);
+                    }
+                    AccessKind::ExtractVar => {
+                        let mut items = vec![];
+                        p.context.all_vars(|name, _| {
+                            items.push(CompletionItem {
+                                label: name.0.clone(),
+                                kind: Some(CompletionItemKind::VARIABLE),
+                                ..Default::default()
+                            })
+                        });
+                        push_completion_items(self, items);
+                    }
+                    AccessKind::ApplyConst => {
+                        let mut items = vec![];
+                        p.context.all_consts(|name, _| {
+                            items.push(CompletionItem {
+                                label: name.0.clone(),
+                                kind: Some(CompletionItemKind::VARIABLE),
+                                ..Default::default()
+                            })
+                        });
+                        push_completion_items(self, items);
+                    }
+                    AccessKind::ImplExtractor => {
+                        let mut items = vec![];
+                        p.context.all_decl(|name| {
+                            items.push(CompletionItem {
+                                label: name.term.0.clone(),
+                                kind: Some(CompletionItemKind::VARIABLE),
+                                ..Default::default()
+                            })
+                        });
+                        push_completion_items(self, items);
+                    }
+                    AccessKind::ImplConstructor => {
+                        let mut items = vec![];
+                        p.context.all_decl(|name| {
+                            items.push(CompletionItem {
+                                label: name.term.0.clone(),
+                                kind: Some(CompletionItemKind::VARIABLE),
+                                ..Default::default()
+                            })
+                        });
+                        push_completion_items(self, items);
+                    }
+                    AccessKind::ApplyVariant(name) => {
+                        let mut v = None;
+                        p.context.all_types(|x| {
+                            if x.name.0.as_str() == name.as_str() {
+                                match &x.ty {
+                                    cranelift_isle::ast::TypeValue::Primitive(_, _) => {}
+                                    cranelift_isle::ast::TypeValue::Enum(vs, _) => {
+                                        v = Some(vs.clone());
+                                    }
+                                }
+                            }
+                        });
+                        let mut items = vec![];
+                        if let Some(vs) = v {
+                            for v in vs.iter() {
+                                items.push(CompletionItem {
+                                    label: v.name.0.clone(),
+                                    kind: Some(CompletionItemKind::ENUM_MEMBER),
+                                    ..Default::default()
+                                })
+                            }
+                        }
 
-                AccessKind::DeclExtern => {}
-                AccessKind::ApplyEORC => {}
-                AccessKind::ExtractVar => {}
-                AccessKind::ApplyConst => {}
-                AccessKind::ImplExtractor => {}
-                AccessKind::ImplConstructor => {}
-                AccessKind::ApplyVariant => {}
-                AccessKind::ApplyVar => {}
-            },
+                        push_completion_items(self, items);
+                    }
+                    AccessKind::ApplyVar => {
+                        let mut items = vec![];
+                        p.context.all_vars(|name, _| {
+                            items.push(CompletionItem {
+                                label: name.0.clone(),
+                                kind: Some(CompletionItemKind::VARIABLE),
+                                ..Default::default()
+                            })
+                        });
+                    }
+                };
+            }
         }
     }
     fn finished(&self) -> bool {
@@ -172,7 +293,7 @@ fn item_to_completion_item(item: &Item) -> Option<CompletionItem> {
 
         Item::Var { name, .. } => CompletionItem {
             label: name.0.clone(),
-            kind: Some(CompletionItemKind::CONSTANT),
+            kind: Some(CompletionItemKind::VARIABLE),
             ..Default::default()
         },
         Item::EnumMemberName { name } => CompletionItem {
@@ -187,12 +308,35 @@ fn item_to_completion_item(item: &Item) -> Option<CompletionItem> {
             ..Default::default()
         },
     };
-
     Some(x)
 }
 
 impl VisitContext {
     pub(crate) fn all_types(&self, mut call_back: impl FnMut(&Type)) {
+        self.all_top_items(|i| match i {
+            Item::Type { ty } => {
+                call_back(ty);
+            }
+            _ => {}
+        });
+    }
+    pub(crate) fn all_decl(&self, mut call_back: impl FnMut(&Decl)) {
+        self.all_top_items(|i| match i {
+            Item::Decl { decl, .. } => {
+                call_back(decl);
+            }
+            _ => {}
+        });
+    }
+    pub(crate) fn all_consts(&self, mut call_back: impl FnMut(&Ident, &Ident)) {
+        self.all_top_items(|i| match i {
+            Item::Const { name, ty } => {
+                call_back(name, ty);
+            }
+            _ => {}
+        });
+    }
+    pub(crate) fn all_top_items(&self, mut call_back: impl FnMut(&Item)) {
         self.scopes
             .as_ref()
             .borrow()
@@ -200,9 +344,44 @@ impl VisitContext {
             .unwrap()
             .items
             .iter()
-            .for_each(|(_, i)| match i {
-                Item::Type { ty } => call_back(ty),
-                _ => {}
-            });
+            .for_each(|(_, i)| call_back(i));
+    }
+    pub(crate) fn all_extractor(&self, call_back: impl FnMut(&Decl)) {
+        self.decl_(call_back, DeclKind::EXTRATOR);
+    }
+    pub(crate) fn all_constructor(&self, call_back: impl FnMut(&Decl)) {
+        self.decl_(call_back, DeclKind::CONSTRUCTOR);
+    }
+    pub(crate) fn decl_(&self, mut call_back: impl FnMut(&Decl), x: u8) {
+        self.all_top_items(|i| match i {
+            Item::Decl { decl, kind } => {
+                if kind.has(x) {
+                    call_back(decl);
+                }
+            }
+            _ => {}
+        });
+    }
+
+    pub(crate) fn all_vars(
+        &self,
+        mut call_back: impl FnMut(
+            &Ident, // name
+            &Ident, // ty
+        ),
+    ) {
+        self.innert_most(|x| match x {
+            Item::Var { name, ty } => call_back(name, ty),
+            _ => {}
+        })
+    }
+
+    fn innert_most(&self, mut call_back: impl FnMut(&Item)) {
+        self.scopes
+            .as_ref()
+            .borrow()
+            .iter()
+            .rev()
+            .for_each(|x| x.items.values().for_each(|i| call_back(i)))
     }
 }

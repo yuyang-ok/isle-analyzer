@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, collections::HashSet, path::PathBuf};
+use std::{cmp::Ordering, path::PathBuf};
 
 use crate::project::{AstProvider, Project, TokenLength};
 

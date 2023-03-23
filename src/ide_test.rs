@@ -2,8 +2,8 @@ use super::goto_definition;
 use super::project::*;
 use super::*;
 use crate::utils::*;
-use cranelift_isle::lexer::Lexer;
 use log::*;
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::str::FromStr;
 
@@ -20,6 +20,12 @@ impl log::Log for SimpleLogger {
     fn flush(&self) {}
 }
 
+pub fn init_log() {
+    log::set_logger(&LOGGER)
+        .map(|()| log::set_max_level(log::LevelFilter::Trace))
+        .unwrap()
+}
+
 const LOGGER: SimpleLogger = SimpleLogger;
 
 fn path_to_abs(s: &str) -> PathBuf {
@@ -28,12 +34,6 @@ fn path_to_abs(s: &str) -> PathBuf {
         PathBuf::from_str(s).unwrap().as_path(),
     );
     x
-}
-
-pub fn init_log() {
-    log::set_logger(&LOGGER)
-        .map(|()| log::set_max_level(log::LevelFilter::Trace))
-        .unwrap()
 }
 
 #[test]
@@ -48,8 +48,24 @@ fn goto_definition() {
 
 #[test]
 fn xxx() {
-    let mut l = Lexer::from_str("xxxx.yyyy", "").unwrap();
-    while let Some((_pos, t)) = l.next().unwrap() {
-        eprintln!("{:?}", t);
+    let x = "hello".to_string();
+    let mut m = HashMap::new();
+    m.insert(x, ());
+    let y = "hello".to_string();
+    m.insert(y, ());
+    eprintln!("{}", m.len())
+}
+
+#[test]
+fn completion() {
+    init_log();
+    let file = path_to_abs("./tests/bound_var.isle");
+    let p = Project::new(vec![file.clone()]).unwrap();
+    let mut handler =
+        completion::Handler::new(url::Url::from_file_path(file.clone()).unwrap(), 3, 9);
+    p.run_visitor_for_file(&file, &mut handler);
+
+    for x in handler.result.unwrap() {
+        eprintln!("xxxx:{:?}->{:?}", x.label, x.kind)
     }
 }

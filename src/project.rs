@@ -103,6 +103,7 @@ impl Project {
         project.run_full_visitor(&mut dummy);
         Ok(project)
     }
+
     fn file_content(&self, file_index: usize) -> &str {
         self.defs
             .file_texts
@@ -123,10 +124,7 @@ impl Project {
     }
     pub(crate) fn found_file_defs<'a>(&'a self, p: &PathBuf) -> Option<VecDefAstProvider<'a>> {
         let file_index = match self.found_file_index(p) {
-            Some(x) => {
-                eprintln!("xxx file_index:{} p:{:?}", x, p.as_path());
-                x
-            }
+            Some(x) => x,
             None => {
                 log::error!("file index out found,{:?}", p);
                 return None;
@@ -340,7 +338,18 @@ impl VisitContext {
         });
     }
     pub(crate) fn enter_item(&self, name: String, item: impl Into<Item>) {
+        if name.as_str() == "_" {
+            return;
+        }
+
         let item = item.into();
+        log::trace!(
+            "enter item name:{} pos:{}:{} {}",
+            name.as_str(),
+            item.def_loc().line,
+            item.def_loc().col,
+            item
+        );
         self.scopes
             .as_ref()
             .borrow_mut()

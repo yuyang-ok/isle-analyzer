@@ -80,15 +80,12 @@ impl Project {
 
         // enter decl
         provider.with_decl(|d| {
-            d.arg_tys
-                .iter()
-                .chain(&vec![d.ret_ty.clone()])
-                .for_each(|x| {
-                    self.visit_type_apply(x, handler);
-                    if handler.finished() {
-                        return;
-                    }
-                });
+            for x in d.arg_tys.iter().chain(&vec![d.ret_ty.clone()]) {
+                self.visit_type_apply(x, handler);
+                if handler.finished() {
+                    return;
+                }
+            }
             let item = ItemOrAccess::Item(Item::Decl {
                 decl: d.clone(),
                 kind: DeclKind::default(),
@@ -161,7 +158,8 @@ impl Project {
             }
             Extern::Const { .. } => {}
         });
-        //
+
+        // visit extractor body.
         provider.with_extractor(|ext| {
             self.context.enter_scope(|| {
                 let decl = self
@@ -302,7 +300,7 @@ impl Project {
 
                                 let item = ItemOrAccess::Access(Access {
                                     access: y.clone().into(),
-                                    kind: AccessKind::ApplyVariant,
+                                    kind: AccessKind::ApplyVariant(x.symbol.clone()),
                                     def: Item::EnumVariant { v: v.clone() },
                                 });
                                 handler.handle_item_or_access(self, &item);
@@ -438,7 +436,7 @@ impl Project {
                                 if let Some(v) = v {
                                     let item = ItemOrAccess::Access(Access {
                                         access: y.clone().into(),
-                                        kind: AccessKind::ApplyVariant,
+                                        kind: AccessKind::ApplyVariant(ty.name.0.clone()),
                                         def: Item::EnumVariant { v: v.clone() },
                                     });
                                     handler.handle_item_or_access(self, &item);
@@ -593,14 +591,14 @@ impl Project {
                         if handler.finished() {
                             return;
                         }
-                        let def = match def {
+                        match def {
                             Item::Type { ty } => match &ty.ty {
                                 TypeValue::Primitive(_, _) => {}
                                 TypeValue::Enum(variants, _) => {
                                     let v = find_variant(variants, y.symbol.as_str());
                                     if let Some(v) = v {
                                         let item = ItemOrAccess::Access(Access {
-                                            kind: AccessKind::ApplyVariant,
+                                            kind: AccessKind::ApplyVariant(ty.name.0.clone()),
                                             access: y.clone().into(),
                                             def: Item::EnumVariant { v: v.clone() },
                                         });

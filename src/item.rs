@@ -107,15 +107,18 @@ impl Item {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Default)]
+#[derive(Clone, PartialEq, Eq, Default, Copy)]
 pub struct DeclKind(pub(crate) u8);
 
 impl DeclKind {
     pub(crate) const EXTRATOR: u8 = 1;
     pub(crate) const CONSTRUCTOR: u8 = 2;
+    pub(crate) fn has(self, x: u8) -> bool {
+        (self.0 | x) != 0
+    }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum AccessKind {
     AppleType,
     DeclExtern,
@@ -124,12 +127,12 @@ pub enum AccessKind {
     ApplyConst,
     ImplExtractor,
     ImplConstructor,
-    ApplyVariant,
+    ApplyVariant(String),
     ApplyVar,
 }
 
 impl AccessKind {
-    fn to_static_str(self) -> &'static str {
+    fn to_static_str(&self) -> &'static str {
         match self {
             AccessKind::AppleType => "apply type",
             AccessKind::DeclExtern => "decl extern",
@@ -137,7 +140,7 @@ impl AccessKind {
             AccessKind::ExtractVar => "extract var",
             AccessKind::ApplyConst => "apply const",
             AccessKind::ImplExtractor => "impl extractor",
-            AccessKind::ApplyVariant => "apply enum member",
+            AccessKind::ApplyVariant(_) => "apply enum member",
             AccessKind::ApplyVar => "apply var",
             AccessKind::ImplConstructor => "impl constructor",
         }
