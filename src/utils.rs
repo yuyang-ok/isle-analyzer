@@ -1,3 +1,7 @@
+use cranelift_isle::{
+    ast::{Ident, Type},
+    lexer::Pos,
+};
 use lsp_types::Location;
 use std::path::*;
 
@@ -88,5 +92,33 @@ impl GetPosition for Location {
                 0,
             );
         }
+    }
+}
+
+pub trait GetPosAndLength {
+    fn get_pos_and_len(&self) -> (Pos, u32);
+}
+
+impl GetPosAndLength for Ident {
+    fn get_pos_and_len(&self) -> (Pos, u32) {
+        (self.1, self.0.len() as u32)
+    }
+}
+
+impl GetPosAndLength for (Pos, u32) {
+    fn get_pos_and_len(&self) -> (Pos, u32) {
+        self.clone()
+    }
+}
+
+impl GetPosAndLength for (Pos, usize) {
+    fn get_pos_and_len(&self) -> (Pos, u32) {
+        (self.0.clone(), self.1 as u32)
+    }
+}
+
+impl GetPosAndLength for Type {
+    fn get_pos_and_len(&self) -> (Pos, u32) {
+        (self.name.1, self.name.0.len() as u32)
     }
 }

@@ -1,7 +1,8 @@
 #[macro_use]
 extern crate lazy_static;
 
-use lsp_types::Location;
+use lsp_types::{Location, Position, Range};
+use utils::GetPosAndLength;
 
 pub mod comment;
 pub mod completion;
@@ -51,4 +52,21 @@ lazy_static! {
         t.insert("enum");
         t
     };
+}
+
+pub(crate) fn to_lsp_range<T: GetPosAndLength>(x: &T) -> Range {
+    let (pos, length) = x.get_pos_and_len();
+
+    let line = (pos.line - 1) as u32;
+    let col = pos.col as u32;
+    Range {
+        start: Position {
+            line,
+            character: col,
+        },
+        end: Position {
+            line,
+            character: col + length,
+        },
+    }
 }

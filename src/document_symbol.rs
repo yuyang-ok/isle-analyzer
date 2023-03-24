@@ -17,7 +17,7 @@ pub fn on_document_symbol_request(context: &Context, request: &Request) {
         }
     };
     asts.with_type(|t| {
-        let l = context.project.mk_location(&t.pos);
+        let l = context.project.mk_location(t);
         if let Some(l) = l {
             result.push(DocumentSymbol {
                 name: t.name.0.clone(),
@@ -32,7 +32,7 @@ pub fn on_document_symbol_request(context: &Context, request: &Request) {
         }
     });
     asts.with_converter(|t| {
-        let l = context.project.mk_location(&t.term.1);
+        let l = context.project.mk_location(&t.term);
         if let Some(l) = l {
             result.push(DocumentSymbol {
                 name: t.term.0.clone(),
@@ -46,8 +46,9 @@ pub fn on_document_symbol_request(context: &Context, request: &Request) {
             });
         }
     });
+
     asts.with_decl(|x| {
-        let l = context.project.mk_location(&x.term.1);
+        let l = context.project.mk_location(&x.term);
         if let Some(l) = l {
             decls.insert_decl(x.term.0.clone(), l.range);
         }
@@ -55,7 +56,7 @@ pub fn on_document_symbol_request(context: &Context, request: &Request) {
     asts.with_rule(|x| {
         let name_and_pos = get_rule_target(&x.pattern);
         if let Some((name, pos)) = name_and_pos {
-            let l = context.project.mk_location(&pos);
+            let l = context.project.mk_location(&(pos, name.len()));
             if let Some(l) = l {
                 decls.insert_decl_rule(
                     name.clone(),
@@ -77,7 +78,7 @@ pub fn on_document_symbol_request(context: &Context, request: &Request) {
     });
 
     asts.with_extractor(|x| {
-        let l = context.project.mk_location(&x.term.1);
+        let l = context.project.mk_location(&x.term);
         if let Some(l) = l {
             decls.insert_decl_rule(
                 x.term.0.clone(),

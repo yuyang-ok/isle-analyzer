@@ -1,3 +1,4 @@
+use crate::utils::GetPosAndLength;
 use crate::utils::GetPosition;
 
 use super::context::*;
@@ -40,8 +41,8 @@ impl Handler {
         }
     }
 
-    fn in_range(&self, project: &Project, pos: Pos) -> Option<Location> {
-        let l = project.mk_location(&pos);
+    fn in_range<T: GetPosAndLength>(&self, project: &Project, pos: &T) -> Option<Location> {
+        let l = project.mk_location(pos);
         if let Some(l) = l {
             if Location::in_range(&l, &self.range) {
                 Some(l)
@@ -59,7 +60,7 @@ impl ItemOrAccessHandler for Handler {
         match item {
             ItemOrAccess::Item(item) => match item {
                 Item::Var { name, ty } => {
-                    let name_loc = self.in_range(p, name.1);
+                    let name_loc = self.in_range(p, name);
                     if let Some(name_loc) = name_loc {
                         self.reuslts.push(mk_inlay_hits(
                             Position {

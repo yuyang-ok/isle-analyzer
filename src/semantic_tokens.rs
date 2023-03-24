@@ -1,8 +1,9 @@
 use std::{cmp::Ordering, path::PathBuf};
 
-use crate::project::{AstProvider, Project, TokenLength};
+use crate::project::{AstProvider, Project};
 
 use super::context::*;
+use super::to_lsp_range;
 use cranelift_isle::ast::Pattern;
 use cranelift_isle::{
     ast::*,
@@ -66,14 +67,13 @@ struct AstSemanticTokenCollector<'a> {
 fn collect_keywords(path: &PathBuf) -> Result<Vec<TokenRange>, Errors> {
     let content = std::fs::read_to_string(path.as_path()).unwrap();
     let mut lexer = Lexer::from_str(content.as_str(), path.as_path().to_str().unwrap())?;
-    let token_length = TokenLength::new(lexer.clone())?;
     let mut ret = Vec::new();
     while let Some((pos, t)) = lexer.next()? {
         match t {
             Token::Symbol(s) => {
                 if super::KEYWORDS.contains(s.as_str()) {
                     ret.push(TokenRange {
-                        range: token_length.to_lsp_range(&pos),
+                        range: to_lsp_range(&(pos, s.len() as u32)),
                         token_type: TokenTypes::Keyword,
                         modifiers: None,
                     });
@@ -137,14 +137,14 @@ impl<'a> AstSemanticTokenCollector<'a> {
 
     fn collect_type(&mut self, d: &Type) {
         self.results.push(TokenRange {
-            range: self.project.token_length.to_lsp_range(&d.name.1),
+            range: to_lsp_range(&d.name),
             token_type: TokenTypes::Type,
             modifiers: Some(TokenModifier::Declaration),
         });
         match &d.ty {
             TypeValue::Primitive(x, _) => {
                 self.results.push(TokenRange {
-                    range: self.project.token_length.to_lsp_range(&x.1),
+                    range: to_lsp_range(x),
                     token_type: TokenTypes::Type,
                     modifiers: None,
                 });
@@ -152,18 +152,18 @@ impl<'a> AstSemanticTokenCollector<'a> {
             TypeValue::Enum(enums, _) => {
                 for v in enums.iter() {
                     self.results.push(TokenRange {
-                        range: self.project.token_length.to_lsp_range(&v.name.1),
+                        range: to_lsp_range(&v.name),
                         token_type: TokenTypes::EnumMember,
                         modifiers: Some(TokenModifier::Declaration),
                     });
                     for f in v.fields.iter() {
                         self.results.push(TokenRange {
-                            range: self.project.token_length.to_lsp_range(&f.name.1),
+                            range: to_lsp_range(&f.name),
                             token_type: TokenTypes::EnumMember,
                             modifiers: Some(TokenModifier::Declaration),
                         });
                         self.results.push(TokenRange {
-                            range: self.project.token_length.to_lsp_range(&f.ty.1),
+                            range: to_lsp_range(&f.ty),
                             token_type: TokenTypes::Type,
                             modifiers: None,
                         });
@@ -187,7 +187,7 @@ impl<'a> AstSemanticTokenCollector<'a> {
         match e {
             Expr::Term { sym, args, .. } => {
                 self.results.push(TokenRange {
-                    range: self.project.token_length.to_lsp_range(&sym.1),
+                    range: to_lsp_range(sym),
                     token_type: TokenTypes::Variable,
                     modifiers: None,
                 });
@@ -197,29 +197,23 @@ impl<'a> AstSemanticTokenCollector<'a> {
             }
             Expr::Var { name, .. } => {
                 self.results.push(TokenRange {
-                    range: self.project.token_length.to_lsp_range(&name.1),
+                    range: to_lsp_range(name),
                     token_type: TokenTypes::Variable,
                     modifiers: None,
                 });
             }
             Expr::ConstInt { val: _, pos: _ } => {}
-            Expr::ConstPrim { val: _, pos } => {
-                self.results.push(TokenRange {
-                    range: self.project.token_length.to_lsp_range(&pos),
-                    token_type: TokenTypes::Number,
-                    modifiers: None,
-                });
-            }
+            Expr::ConstPrim { val, pos } => {}
 
             Expr::Let { defs, body, .. } => {
                 for d in defs.iter() {
                     self.results.push(TokenRange {
-                        range: self.project.token_length.to_lsp_range(&d.var.1),
+                        range: to_lsp_range(&d.var),
                         token_type: TokenTypes::Number,
                         modifiers: Some(TokenModifier::Declaration),
                     });
                     self.results.push(TokenRange {
-                        range: self.project.token_length.to_lsp_range(&d.ty.1),
+                        range: to_lsp_range(&d.ty),
                         token_type: TokenTypes::Type,
                         modifiers: Some(TokenModifier::Declaration),
                     });
@@ -230,13 +224,13 @@ impl<'a> AstSemanticTokenCollector<'a> {
     }
     fn collect_extractor(&mut self, d: &Extractor) {
         self.results.push(TokenRange {
-            range: self.project.token_length.to_lsp_range(&d.term.1),
+            range: to_lsp_range(&d.term),
             token_type: TokenTypes::Function,
             modifiers: None,
         });
         for a in d.args.iter() {
             self.results.push(TokenRange {
-                range: self.project.token_length.to_lsp_range(&a.1),
+                range: to_lsp_range(a),
                 token_type: TokenTypes::Variable,
                 modifiers: Some(TokenModifier::Declaration),
             });
@@ -247,7 +241,7 @@ impl<'a> AstSemanticTokenCollector<'a> {
     fn collect_pattern(&mut self, p: &Pattern, mode: CollectPatternType) {
         match p {
             Pattern::Var { var, .. } => self.results.push(TokenRange {
-                range: self.project.token_length.to_lsp_range(&var.1),
+                range: to_lsp_range(var),
                 token_type: TokenTypes::Variable,
                 modifiers: mode.to_modifier(),
             }),
@@ -257,29 +251,29 @@ impl<'a> AstSemanticTokenCollector<'a> {
                 pos: _,
             } => {
                 self.results.push(TokenRange {
-                    range: self.project.token_length.to_lsp_range(&var.1),
+                    range: to_lsp_range(var),
                     token_type: TokenTypes::Variable,
                     modifiers: None,
                 });
                 self.collect_pattern(subpat.as_ref(), mode);
             }
-            Pattern::ConstInt { val: _val, pos } => {
+            Pattern::ConstInt { val, pos } => {
                 self.results.push(TokenRange {
-                    range: self.project.token_length.to_lsp_range(&pos),
+                    range: to_lsp_range(&(pos.clone(), 0 as u32)),
                     token_type: TokenTypes::Number,
                     modifiers: None,
                 });
             }
             Pattern::ConstPrim { val, .. } => {
                 self.results.push(TokenRange {
-                    range: self.project.token_length.to_lsp_range(&val.1),
+                    range: to_lsp_range(val),
                     token_type: TokenTypes::Number,
                     modifiers: None,
                 });
             }
             Pattern::Term { sym, args, pos: _ } => {
                 self.results.push(TokenRange {
-                    range: self.project.token_length.to_lsp_range(&sym.1),
+                    range: to_lsp_range(sym),
                     token_type: TokenTypes::Variable,
                     modifiers: None,
                 });
@@ -287,13 +281,7 @@ impl<'a> AstSemanticTokenCollector<'a> {
                     self.collect_pattern(a, mode);
                 }
             }
-            Pattern::Wildcard { pos } => {
-                self.results.push(TokenRange {
-                    range: self.project.token_length.to_lsp_range(pos),
-                    token_type: TokenTypes::Number,
-                    modifiers: None,
-                });
-            }
+            Pattern::Wildcard { pos } => {}
             Pattern::And { subpats, pos: _ } => {
                 for s in subpats.iter() {
                     self.collect_pattern(s, mode);
@@ -305,19 +293,19 @@ impl<'a> AstSemanticTokenCollector<'a> {
 
     fn collect_decl(&mut self, d: &Decl) {
         self.results.push(TokenRange {
-            range: self.project.token_length.to_lsp_range(&d.term.1),
+            range: to_lsp_range(&d.term),
             token_type: TokenTypes::Struct,
             modifiers: Some(TokenModifier::Declaration),
         });
         for t in d.arg_tys.iter() {
             self.results.push(TokenRange {
-                range: self.project.token_length.to_lsp_range(&t.1),
+                range: to_lsp_range(t),
                 token_type: TokenTypes::Type,
                 modifiers: None,
             });
         }
         self.results.push(TokenRange {
-            range: self.project.token_length.to_lsp_range(&d.ret_ty.1),
+            range: to_lsp_range(&d.ret_ty),
             token_type: TokenTypes::Type,
             modifiers: None,
         });
@@ -327,26 +315,26 @@ impl<'a> AstSemanticTokenCollector<'a> {
         match d {
             Extern::Extractor { term, .. } => {
                 self.results.push(TokenRange {
-                    range: self.project.token_length.to_lsp_range(&term.1),
+                    range: to_lsp_range(term),
                     token_type: TokenTypes::Function,
                     modifiers: None,
                 });
             }
             Extern::Constructor { term, .. } => {
                 self.results.push(TokenRange {
-                    range: self.project.token_length.to_lsp_range(&term.1),
+                    range: to_lsp_range(term),
                     token_type: TokenTypes::Function,
                     modifiers: None,
                 });
             }
             Extern::Const { name, ty, .. } => {
                 self.results.push(TokenRange {
-                    range: self.project.token_length.to_lsp_range(&name.1),
+                    range: to_lsp_range(name),
                     token_type: TokenTypes::Variable,
                     modifiers: None,
                 });
                 self.results.push(TokenRange {
-                    range: self.project.token_length.to_lsp_range(&ty.1),
+                    range: to_lsp_range(ty),
                     token_type: TokenTypes::Type,
                     modifiers: None,
                 });
@@ -356,18 +344,18 @@ impl<'a> AstSemanticTokenCollector<'a> {
 
     fn collect_converter(&mut self, d: &Converter) {
         self.results.push(TokenRange {
-            range: self.project.token_length.to_lsp_range(&d.term.1),
+            range: to_lsp_range(&d.term),
             token_type: TokenTypes::Function,
             modifiers: Some(TokenModifier::Declaration),
         });
         self.results.push(TokenRange {
-            range: self.project.token_length.to_lsp_range(&d.inner_ty.1),
+            range: to_lsp_range(&d.inner_ty),
             token_type: TokenTypes::Type,
             modifiers: None,
         });
 
         self.results.push(TokenRange {
-            range: self.project.token_length.to_lsp_range(&d.outer_ty.1),
+            range: to_lsp_range(&d.outer_ty),
             token_type: TokenTypes::Type,
             modifiers: None,
         });

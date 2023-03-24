@@ -40,11 +40,11 @@ pub fn on_hover_request(context: &Context, request: &Request) {
 fn hover_on_item_or_access(ia: &ItemOrAccess, p: &Project) -> String {
     let item_hover = |item: &Item| -> String {
         let pos = item.def_loc();
-        let fpath = p.file_index_path(pos.file);
+        let fpath = p.file_index_path(pos.0.file);
         let comment = if let Some(fpath) = fpath.as_ref() {
             p.comments
                 .get(fpath)
-                .map(|d| d.get_comment(&pos).map(|x| x.as_str()))
+                .map(|d| d.get_comment(&pos.0).map(|x| x.as_str()))
                 .flatten()
                 .unwrap_or("")
         } else {

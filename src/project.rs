@@ -2,10 +2,13 @@ use super::item::*;
 use crate::comment::CommentExtrator;
 use crate::comment::DocumentComments;
 use crate::item;
+use crate::utils::GetPosAndLength;
 use cranelift_isle::ast::*;
 use cranelift_isle::error::Errors;
 use cranelift_isle::lexer::*;
 use cranelift_isle::parser::*;
+use lsp_types::Position;
+use lsp_types::Range;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -15,7 +18,7 @@ use std::str::FromStr;
 
 pub struct Project {
     pub(crate) defs: Defs,
-    pub(crate) token_length: TokenLength,
+
     pub(crate) context: VisitContext,
     pub(crate) comments: HashMap<PathBuf, DocumentComments>,
 }
@@ -28,7 +31,7 @@ impl Project {
                 filenames: Default::default(),
                 file_texts: Default::default(),
             },
-            token_length: Default::default(),
+
             context: Default::default(),
             comments: Default::default(),
         }
@@ -80,12 +83,11 @@ impl Project {
     ) -> Result<Self, cranelift_isle::error::Errors> {
         let files: Vec<PathBuf> = paths.into_iter().collect();
         let l = Lexer::from_files(files.clone())?;
-        let token_length = TokenLength::new(l.clone())?;
+
         let defs = parse(l)?;
         let comments = HashMap::new();
         let mut project = Self {
             defs,
-            token_length,
             context: VisitContext::new(),
             comments,
         };
@@ -228,9 +230,6 @@ impl Project {
             self.defs.defs[*s] = FALSE_DEF.clone();
         }
 
-        self.token_length.update_token_length(file_index, lexer)?;
-        // rebuild global items.
-
         let mut dummy = DummyHandler {};
         self.run_visitor_for_file(p, &mut dummy);
 
@@ -277,7 +276,10 @@ pub(crate) fn get_decl_pos(d: &Def) -> Option<&Pos> {
 }
 
 impl Project {
-    pub(crate) fn mk_location(&self, pos: &Pos) -> Option<lsp_types::Location> {
+    pub(crate) fn mk_location<T: GetPosAndLength>(&self, x: &T) -> Option<lsp_types::Location> {
+        let (pos, length) = x.get_pos_and_len();
+        let line = (pos.line - 1) as u32;
+        let col = pos.col as u32;
         self.defs.filenames.get(pos.file).map(|x| {
             let s = x.as_ref().to_string();
             lsp_types::Location {
@@ -285,7 +287,16 @@ impl Project {
                     PathBuf::from_str(s.as_str()).unwrap(), //
                 )
                 .unwrap(),
-                range: self.token_length.to_lsp_range(pos),
+                range: Range {
+                    start: Position {
+                        line,
+                        character: col,
+                    },
+                    end: Position {
+                        line,
+                        character: col + length,
+                    },
+                },
             }
         })
     }
@@ -346,8 +357,8 @@ impl VisitContext {
         log::trace!(
             "enter item name:{} pos:{}:{} {}",
             name.as_str(),
-            item.def_loc().line,
-            item.def_loc().col,
+            item.def_loc().0.line,
+            item.def_loc().0.col,
             item
         );
         self.scopes
@@ -547,78 +558,6 @@ impl<'a> AstProvider for VecDefAstProvider<'a> {
                 }
             }
         })
-    }
-}
-
-#[derive(Default, Clone)]
-pub struct TokenLength {
-    pos: HashMap<Pos, usize>,
-}
-
-impl TokenLength {
-    pub(crate) fn to_lsp_range(&self, pos: &Pos) -> lsp_types::Range {
-        // ISLE line start with 1
-        // col start with 0
-        let length = self.pos.get(pos).map(|x| *x).unwrap_or_default();
-        lsp_types::Range {
-            start: lsp_types::Position {
-                line: (pos.line - 1) as u32,
-                character: pos.col as u32,
-            },
-            end: lsp_types::Position {
-                line: (pos.line - 1) as u32,
-                character: pos.col as u32 + (length as u32),
-            },
-        }
-    }
-}
-
-impl TokenLength {
-    pub(crate) fn new(mut l: Lexer) -> Result<Self, cranelift_isle::error::Errors> {
-        let mut ret = Self::default();
-        while let Some((pos, t)) = l.next()? {
-            for s in Self::t_len(&t, pos) {
-                ret.pos.insert(s.pos, s.symbol_len());
-            }
-        }
-        Ok(ret)
-    }
-
-    fn t_len(t: &Token, pos: Pos) -> Vec<SymbolAndPos> {
-        let empty = Vec::new();
-        match t {
-            Token::LParen => {}
-            Token::RParen => {}
-            Token::Symbol(x) => {
-                return SplitedSymbol::from(&(x.clone(), pos)).to_vec();
-            }
-            Token::Int(_) => {}
-            Token::At => {}
-        };
-        empty
-    }
-
-    pub(crate) fn update_token_length(
-        &mut self,
-        file_index: usize,
-        mut lexer: Lexer,
-    ) -> Result<(), Errors> {
-        let mut del = HashSet::new();
-        self.pos.keys().for_each(|k| {
-            if k.file == file_index {
-                del.insert(k.clone());
-            }
-        });
-        for d in del {
-            self.pos.remove(&d);
-        }
-        while let Some((mut pos, t)) = lexer.next()? {
-            pos.file = file_index;
-            for s in Self::t_len(&t, pos) {
-                self.pos.insert(s.pos, s.symbol_len());
-            }
-        }
-        Ok(())
     }
 }
 

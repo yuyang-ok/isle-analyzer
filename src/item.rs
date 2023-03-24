@@ -73,7 +73,7 @@ impl Default for Item {
 pub const UNKNOWN_POS: Pos = Pos {
     file: 999,
     offset: 0,
-    line: 0,
+    line: 1,
     col: 0,
 };
 
@@ -82,21 +82,22 @@ lazy_static! {
 }
 
 impl Item {
-    pub(crate) fn def_loc(&self) -> Pos {
+    pub(crate) fn def_loc(&self) -> (Pos, u32) {
         match self {
-            Item::Type { ty } => ty.pos,
-            Item::Decl { decl, kind: _ } => decl.term.1,
-            Item::Dummy => UNKNOWN_POS,
-            Item::Const { name, ty: _ } => name.1,
-            Item::Var { name, ty: _ } => name.1,
-            Item::EnumMemberName { name } => name.1,
-            Item::EnumMemberField { name } => name.1,
-            Item::EnumVariant { v } => v.name.1,
+            Item::Type { ty } => (ty.pos, ty.name.0.len() as u32),
+            Item::Decl { decl, kind: _ } => (decl.term.1, decl.term.0.len() as u32),
+            Item::Dummy => (UNKNOWN_POS, 0),
+            Item::Const { name, ty: _ } => (name.1, 0),
+            Item::Var { name, ty: _ } => (name.1, name.0.len() as u32),
+            Item::EnumMemberName { name } => (name.1, name.0.len() as u32),
+            Item::EnumMemberField { name } => (name.1, name.0.len() as u32),
+            Item::EnumVariant { v } => (v.name.1, v.name.0.len() as u32),
         }
     }
 
     pub(crate) fn def_file(&self) -> usize {
-        self.def_loc().file
+        let (p, _) = self.def_loc();
+        p.file
     }
 
     pub(crate) fn decl_nth_ty(&self, n: usize) -> Option<&Ident> {
@@ -161,8 +162,9 @@ impl Access {
 }
 
 impl Access {
-    pub(crate) fn access_def_loc(&self) -> (Pos, Pos) {
-        (self.access.1, self.def.def_loc())
+    pub(crate) fn access_def_loc(&self) -> (Pos, Pos, u32) {
+        let (p, l) = self.def.def_loc();
+        (self.access.1, p, l)
     }
 }
 

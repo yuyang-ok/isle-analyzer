@@ -108,7 +108,8 @@ impl ItemOrAccessHandler for Handler {
 
         match item_or_access {
             ItemOrAccess::Item(item) => {
-                let l = p.mk_location(&item.def_loc());
+                let (def_pos, length) = item.def_loc();
+                let l = p.mk_location(&(def_pos, length));
                 if let Some(l) = l {
                     if self.match_loc(&l) {
                         self.completion_on_def = true;
@@ -116,7 +117,8 @@ impl ItemOrAccessHandler for Handler {
                 }
             }
             ItemOrAccess::Access(access) => {
-                let access_loc = p.mk_location(&access.access_def_loc().0);
+                let (access_pos, _, length) = access.access_def_loc();
+                let access_loc = p.mk_location(&(access_pos, length));
                 if access_loc
                     .as_ref()
                     .map(|l| self.match_loc(l))

@@ -58,13 +58,13 @@ pub fn on_references_request(context: &mut Context, request: &Request) {
 }
 
 struct Handler {
-    def_loc: Pos,
+    def_loc: (Pos, u32),
     include_declaration: bool,
-    refs: HashSet<Pos>,
+    refs: HashSet<(Pos, u32)>,
 }
 
 impl Handler {
-    pub(crate) fn new(def_loc: Pos, include_declaration: bool) -> Self {
+    pub(crate) fn new(def_loc: (Pos, u32), include_declaration: bool) -> Self {
         Self {
             def_loc,
             include_declaration,
@@ -100,9 +100,9 @@ impl ItemOrAccessHandler for Handler {
             ItemOrAccess::Item(_) => {}
             ItemOrAccess::Access(access) => match item {
                 _ => {
-                    let (access, def) = access.access_def_loc();
-                    if def == self.def_loc {
-                        self.refs.insert(access);
+                    let (access, def, length) = access.access_def_loc();
+                    if (def, length) == self.def_loc {
+                        self.refs.insert((access, length));
                         return;
                     }
                 }
