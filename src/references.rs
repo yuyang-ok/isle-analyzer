@@ -30,12 +30,13 @@ pub fn on_references_request(context: &mut Context, request: &Request) {
             .send(Message::Response(r))
             .unwrap();
     };
-    let def_loc = match goto_definition.result_pos {
-        Some(x) => x,
-        None => {
-            send_err();
-            return;
-        }
+
+    let def_loc = match goto_definition.result_item_or_access {
+        Some(x) => match x {
+            ItemOrAccess::Item(d) => d.def_loc(),
+            ItemOrAccess::Access(Access { def, .. }) => def.def_loc(),
+        },
+        None => return,
     };
 
     let is_local = false;
@@ -72,16 +73,16 @@ impl Handler {
         }
     }
 
-    pub(crate) fn to_locations(self, convert_loc: &Project) -> Vec<Location> {
+    pub(crate) fn to_locations(self, p: &Project) -> Vec<Location> {
         let mut file_ranges = Vec::with_capacity(self.refs.len() + 1);
         if self.include_declaration {
-            let l = convert_loc.mk_location(&self.def_loc);
+            let l = p.mk_location(&self.def_loc);
             if let Some(l) = l {
                 file_ranges.push(l);
             }
         }
         for x in self.refs.iter() {
-            let l = convert_loc.mk_location(x);
+            let l = p.mk_location(x);
             if let Some(l) = l {
                 file_ranges.push(l);
             }
@@ -101,7 +102,7 @@ impl ItemOrAccessHandler for Handler {
             ItemOrAccess::Access(access) => match item {
                 _ => {
                     let (access, def, length) = access.access_def_loc();
-                    if (def, length) == self.def_loc {
+                    if def == self.def_loc.0 {
                         self.refs.insert((access, length));
                         return;
                     }

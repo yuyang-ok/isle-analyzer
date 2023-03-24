@@ -52,7 +52,7 @@ pub(crate) struct Handler {
     pub(crate) line: u32,
     pub(crate) col: u32,
     pub(crate) result: Option<Location>,
-    pub(crate) result_pos: Option<(Pos, u32)>,
+
     pub(crate) result_item_or_access: Option<ItemOrAccess>,
 }
 
@@ -63,7 +63,7 @@ impl Handler {
             line,
             col,
             result: None,
-            result_pos: None,
+
             result_item_or_access: None,
         }
     }
@@ -85,7 +85,6 @@ impl ItemOrAccessHandler for Handler {
                     if Self::in_range(self, &l) {
                         self.result = Some(l.clone());
                         self.result_item_or_access = Some(item_or_access.clone());
-                        self.result_pos = Some(def_loc);
                     }
                 }
             }
@@ -98,7 +97,6 @@ impl ItemOrAccessHandler for Handler {
                         if let Some(l) = l {
                             self.result = Some(l);
                             self.result_item_or_access = Some(item_or_access.clone());
-                            self.result_pos = Some((def, length));
                         }
                     }
                 }

@@ -1,20 +1,19 @@
+use cranelift_isle::lexer::Pos;
 use crossbeam::channel::bounded;
 use crossbeam::channel::select;
 
-use isle_analyzer::completion::on_completion_request;
-use isle_analyzer::context::*;
-use isle_analyzer::document_symbol;
-use isle_analyzer::goto_definition;
-use isle_analyzer::hover;
-use isle_analyzer::inlay_hitnt;
-use isle_analyzer::project::Project;
-use isle_analyzer::references;
-use isle_analyzer::semantic_tokens;
+use isle_analyzer::{
+    completion::on_completion_request, context::*, document_symbol, goto_definition, hover,
+    inlay_hitnt, project::Project, references, semantic_tokens,
+};
 use log::*;
 use lsp_types::notification::Notification;
 use lsp_types::request::Request;
 use lsp_types::*;
+use std::collections::HashMap;
+use std::hash::Hash;
 use std::path::*;
+use std::str::FromStr;
 use std::sync::{Arc, Mutex};
 
 struct SimpleLogger;
@@ -127,14 +126,9 @@ fn main() {
             }),
         )
         .expect("could not finish connection initialization");
-    let (diag_sender, diag_receiver) = bounded::<(PathBuf, ())>(1);
-    let _diag_sender = Arc::new(Mutex::new(diag_sender));
 
     loop {
         select! {
-            recv(diag_receiver) -> _message => {
-
-            }
             recv(context.connection.receiver) -> message => {
                 match message {
                     Ok(Message::Request(request)) => on_request(&mut context, &request),
@@ -172,7 +166,6 @@ fn on_request(context: &mut Context, request: &lsp_server::Request) {
         lsp_types::request::HoverRequest::METHOD => {
             hover::on_hover_request(context, request);
         }
-
         lsp_types::request::DocumentSymbolRequest::METHOD => {
             document_symbol::on_document_symbol_request(context, request);
         }
@@ -197,14 +190,196 @@ fn on_notification(context: &mut Context, notification: &lsp_server::Notificatio
                 serde_json::from_value::<DidChangeTextDocumentParams>(notification.params.clone())
                     .expect("could not deserialize DidChangeTextDocumentParams request");
             let fpath = parameters.text_document.uri.to_file_path().unwrap();
-            match context.project.update_defs(
+            update_defs(
+                context,
                 &fpath,
                 parameters.content_changes.last().unwrap().text.as_str(),
-            ) {
-                Ok(_) => {}
-                Err(err) => log::error!("update_def failed,err:{:?}", err),
-            };
+            );
+        }
+        lsp_types::notification::DidSaveTextDocument::METHOD => {
+            let parameters =
+                serde_json::from_value::<DidSaveTextDocumentParams>(notification.params.clone())
+                    .expect("could not deserialize DidChangeTextDocumentParams request");
+
+            let fpath = parameters.text_document.uri.to_file_path().unwrap();
+            update_defs(
+                context,
+                &fpath,
+                std::fs::read_to_string(fpath.as_path()).unwrap().as_str(),
+            );
+            send_diag(context);
         }
         _ => log::error!("handle request '{}' from client", notification.method),
+    }
+}
+
+fn update_defs(context: &mut Context, fpath: &PathBuf, content: &str) {
+    match context.project.update_defs(&fpath, content) {
+        Ok(_) => {}
+        Err(err) => log::error!("update_def failed,err:{:?}", err),
+    };
+}
+
+fn send_diag(context: &mut Context) {
+    let files = context
+        .project
+        .get_filenames()
+        .iter()
+        .map(|x| PathBuf::from_str(x.as_ref()).unwrap())
+        .collect::<Vec<_>>();
+    match cranelift_isle::compile::from_files(
+        &files,
+        &cranelift_isle::codegen::CodegenOptions {
+            exclude_global_allow_pragmas: false,
+        },
+    ) {
+        Ok(_) => {
+            for f in files.iter() {
+                let ds = lsp_types::PublishDiagnosticsParams::new(
+                    Url::from_file_path(f).unwrap(),
+                    vec![],
+                    None,
+                );
+                context
+                    .connection
+                    .sender
+                    .send(lsp_server::Message::Notification(
+                        lsp_server::Notification {
+                            method: format!(
+                                "{}",
+                                lsp_types::notification::PublishDiagnostics::METHOD
+                            ),
+                            params: serde_json::to_value(ds).unwrap(),
+                        },
+                    ))
+                    .unwrap();
+            }
+        }
+        Err(err) => {
+            use cranelift_isle::error::Error::*;
+            #[derive(Default)]
+            struct Diags {
+                m: HashMap<PathBuf, Vec<Diagnostic>>,
+            }
+            impl Diags {
+                fn insert(&mut self, p: PathBuf, d: Diagnostic) {
+                    if let Some(xxx) = self.m.get_mut(&p) {
+                        xxx.push(d);
+                    } else {
+                        self.m.insert(p, vec![d]);
+                    }
+                }
+                fn mk_empty(&mut self, p: PathBuf) {
+                    if let Some(_) = self.m.get_mut(&p) {
+                    } else {
+                        self.m.insert(p, vec![]);
+                    }
+                }
+            }
+            let mut diags = Diags::default();
+            for e in err.errors.iter() {
+                let d = match e {
+                    IoError { error, context } => {
+                        // TODO
+                    }
+                    cranelift_isle::error::Error::ParseError { msg, span } => {
+                        let file = files[span.to.file].clone();
+                        let d = Diagnostic {
+                            range: Range {
+                                start: pos_to_position(span.from),
+                                end: pos_to_position(span.to),
+                            },
+                            message: format!("{}", msg),
+                            ..Default::default()
+                        };
+                        diags.insert(file, d);
+                    }
+                    TypeError { msg, span } => {
+                        let file = files[span.to.file].clone();
+                        let d = Diagnostic {
+                            range: Range {
+                                start: pos_to_position(span.from),
+                                end: pos_to_position(span.to),
+                            },
+                            message: format!("{}", msg),
+                            ..Default::default()
+                        };
+                        diags.insert(file, d);
+                    }
+                    UnreachableError { msg, span } => {
+                        let file = files[span.to.file].clone();
+                        let d = Diagnostic {
+                            range: Range {
+                                start: pos_to_position(span.from),
+                                end: pos_to_position(span.to),
+                            },
+                            message: format!("{}", msg),
+                            ..Default::default()
+                        };
+                        diags.insert(file, d);
+                    }
+                    OverlapError { msg, rules } => {
+                        for r in rules.iter() {
+                            let file = files[r.to.file].clone();
+                            let d = Diagnostic {
+                                range: Range {
+                                    start: pos_to_position(r.from),
+                                    end: pos_to_position(r.to),
+                                },
+                                message: format!("{}", msg),
+                                ..Default::default()
+                            };
+                            diags.insert(file, d);
+                        }
+                    }
+                    ShadowedError { shadowed, mask } => {
+                        for r in shadowed.iter().chain(vec![mask]) {
+                            let file = files[r.to.file].clone();
+                            let d = Diagnostic {
+                                range: Range {
+                                    start: pos_to_position(r.from),
+                                    end: pos_to_position(r.to),
+                                },
+                                message: format!("{}","The rules can never match because another rule will always match first."),
+                                ..Default::default()
+                            };
+                            diags.insert(file, d);
+                        }
+                    }
+                };
+            }
+            for f in files.iter() {
+                if diags.m.get(f).map(|x| x.len()).unwrap_or(0) == 0 {
+                    diags.mk_empty(f.clone());
+                }
+            }
+            for (k, v) in diags.m.into_iter() {
+                context
+                    .connection
+                    .sender
+                    .send(lsp_server::Message::Notification(
+                        lsp_server::Notification {
+                            method: format!(
+                                "{}",
+                                lsp_types::notification::PublishDiagnostics::METHOD
+                            ),
+                            params: serde_json::to_value(PublishDiagnosticsParams {
+                                uri: Url::from_file_path(k).unwrap(),
+                                diagnostics: v,
+                                version: None,
+                            })
+                            .unwrap(),
+                        },
+                    ))
+                    .unwrap();
+            }
+        }
+    };
+}
+
+fn pos_to_position(x: Pos) -> Position {
+    Position {
+        line: (x.line - 1) as u32,
+        character: x.col as u32,
     }
 }

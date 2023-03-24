@@ -200,9 +200,7 @@ impl Project {
                             self.apply_extractor(&ext.template, handler);
                         });
                     }
-                    _ => {
-                        unreachable!()
-                    }
+                    _ => {}
                 }
             })
         });

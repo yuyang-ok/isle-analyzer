@@ -15,6 +15,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::str::FromStr;
+use std::sync::Arc;
 
 pub struct Project {
     pub(crate) defs: Defs,
@@ -35,6 +36,9 @@ impl Project {
             context: Default::default(),
             comments: Default::default(),
         }
+    }
+    pub fn get_filenames(&self) -> &Vec<Arc<str>> {
+        &self.defs.filenames
     }
 
     pub fn from_walk() -> Result<Self, cranelift_isle::error::Errors> {
