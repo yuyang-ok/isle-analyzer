@@ -1,6 +1,6 @@
 use std::{cmp::Ordering, path::PathBuf};
 
-use crate::project::{AstProvider, Project};
+use crate::project::AstProvider;
 
 use super::context::*;
 use super::to_lsp_range;
@@ -22,7 +22,7 @@ pub fn on_senantic_tokens(context: &Context, request: &Request) {
         Some(x) => x,
         None => return,
     };
-    let mut collector = AstSemanticTokenCollector::new(&context.project);
+    let mut collector = AstSemanticTokenCollector::new();
     asts.with_def(|d| collector.collect_def(d));
     let mut tokens = collector.to_tokens();
     tokens.extend(match collect_keywords(&fpath) {
@@ -59,9 +59,8 @@ pub fn on_senantic_tokens(context: &Context, request: &Request) {
         .unwrap();
 }
 
-struct AstSemanticTokenCollector<'a> {
+struct AstSemanticTokenCollector {
     results: Vec<TokenRange>,
-    project: &'a Project,
 }
 
 fn collect_keywords(path: &PathBuf) -> Result<Vec<TokenRange>, Errors> {
@@ -113,12 +112,9 @@ impl CollectPatternType {
     }
 }
 
-impl<'a> AstSemanticTokenCollector<'a> {
-    fn new(p: &'a Project) -> Self {
-        Self {
-            project: p,
-            results: vec![],
-        }
+impl AstSemanticTokenCollector {
+    fn new() -> Self {
+        Self { results: vec![] }
     }
     fn to_tokens(self) -> Vec<TokenRange> {
         self.results
@@ -203,7 +199,7 @@ impl<'a> AstSemanticTokenCollector<'a> {
                 });
             }
             Expr::ConstInt { val: _, pos: _ } => {}
-            Expr::ConstPrim { val, pos } => {}
+            Expr::ConstPrim { val: _, pos: _ } => {}
 
             Expr::Let { defs, body, .. } => {
                 for d in defs.iter() {
@@ -257,7 +253,7 @@ impl<'a> AstSemanticTokenCollector<'a> {
                 });
                 self.collect_pattern(subpat.as_ref(), mode);
             }
-            Pattern::ConstInt { val, pos } => {
+            Pattern::ConstInt { val: _, pos } => {
                 self.results.push(TokenRange {
                     range: to_lsp_range(&(pos.clone(), 0 as u32)),
                     token_type: TokenTypes::Number,
@@ -281,7 +277,7 @@ impl<'a> AstSemanticTokenCollector<'a> {
                     self.collect_pattern(a, mode);
                 }
             }
-            Pattern::Wildcard { pos } => {}
+            Pattern::Wildcard { pos: _ } => {}
             Pattern::And { subpats, pos: _ } => {
                 for s in subpats.iter() {
                     self.collect_pattern(s, mode);
@@ -427,6 +423,7 @@ impl Into<u32> for TokenModifier {
 }
 
 impl TokenModifier {
+    #[allow(dead_code)] // actual used in test.
     fn to_static_str(self) -> &'static str {
         match self {
             Self::Declaration => "declaration",

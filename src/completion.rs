@@ -1,12 +1,12 @@
 // Copyright (c) The Diem Core Contributors
 // Copyright (c) The Move Contributors
 // SPDX-License-Identifier: Apache-2.0
-
+#![allow(dead_code)]
 use super::item::*;
 use super::project::*;
 use super::utils::*;
 use crate::context::Context;
-use crate::project;
+
 use cranelift_isle::ast::Decl;
 use cranelift_isle::ast::Ident;
 use cranelift_isle::ast::Type;
@@ -47,9 +47,9 @@ pub fn on_completion_request(context: &Context, request: &Request) {
     context
         .project
         .run_visitor_for_file(&fpath.to_file_path().unwrap(), &mut handler);
-    let completion_on_def = handler.completion_on_def;
+
     let mut result = handler.result.unwrap_or(vec![]);
-    if result.len() == 0 && completion_on_def == false {
+    if result.len() == 0 {
         context.project.context.all_top_items(|x| {
             if let Some(c) = item_to_completion_item(&x) {
                 result.push(c);
@@ -73,7 +73,6 @@ pub(crate) struct Handler {
     pub(crate) line: u32,
     pub(crate) col: u32,
     pub(crate) result: Option<Vec<CompletionItem>>,
-    completion_on_def: bool,
 }
 
 impl Handler {
@@ -83,7 +82,6 @@ impl Handler {
             line,
             col,
             result: None,
-            completion_on_def: false,
         }
     }
     fn match_loc(&self, range: &Location) -> bool {
@@ -107,15 +105,7 @@ impl ItemOrAccessHandler for Handler {
         };
 
         match item_or_access {
-            ItemOrAccess::Item(item) => {
-                let (def_pos, length) = item.def_loc();
-                let l = p.mk_location(&(def_pos, length));
-                if let Some(l) = l {
-                    if self.match_loc(&l) {
-                        self.completion_on_def = true;
-                    }
-                }
-            }
+            ItemOrAccess::Item(_item) => {}
             ItemOrAccess::Access(access) => {
                 let (access_pos, _, length) = access.access_def_loc();
                 let access_loc = p.mk_location(&(access_pos, length));
@@ -253,7 +243,7 @@ impl ItemOrAccessHandler for Handler {
         }
     }
     fn finished(&self) -> bool {
-        self.result.is_some() || self.completion_on_def
+        self.result.is_some()
     }
 }
 
@@ -302,7 +292,7 @@ fn item_to_completion_item(item: &Item) -> Option<CompletionItem> {
             kind: Some(CompletionItemKind::FIELD),
             ..Default::default()
         },
-        Item::EnumMemberField { name } => return None,
+        Item::EnumMemberField { name: _ } => return None,
         Item::EnumVariant { v } => CompletionItem {
             label: v.name.0.clone(),
             kind: Some(CompletionItemKind::ENUM_MEMBER),

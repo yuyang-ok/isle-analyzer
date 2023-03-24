@@ -1,5 +1,5 @@
 use cranelift_isle::lexer::Pos;
-use crossbeam::channel::bounded;
+
 use crossbeam::channel::select;
 
 use isle_analyzer::{
@@ -11,11 +11,9 @@ use lsp_types::notification::Notification;
 use lsp_types::request::Request;
 use lsp_types::*;
 use std::collections::HashMap;
-use std::hash::Hash;
+
 use std::path::*;
 use std::str::FromStr;
-use std::sync::{Arc, Mutex};
-
 struct SimpleLogger;
 impl log::Log for SimpleLogger {
     fn enabled(&self, metadata: &Metadata) -> bool {
@@ -278,8 +276,11 @@ fn send_diag(context: &mut Context) {
             }
             let mut diags = Diags::default();
             for e in err.errors.iter() {
-                let d = match e {
-                    IoError { error, context } => {
+                match e {
+                    IoError {
+                        error: _,
+                        context: _,
+                    } => {
                         // TODO
                     }
                     cranelift_isle::error::Error::ParseError { msg, span } => {
@@ -348,6 +349,7 @@ fn send_diag(context: &mut Context) {
                     }
                 };
             }
+
             for f in files.iter() {
                 if diags.m.get(f).map(|x| x.len()).unwrap_or(0) == 0 {
                     diags.mk_empty(f.clone());

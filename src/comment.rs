@@ -85,6 +85,7 @@ impl CommentExtrator {
 
 pub struct Comment {
     pub(crate) line: u32,
+    #[allow(dead_code)]
     pub(crate) col: u32,
     pub(crate) content: String,
 }

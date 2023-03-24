@@ -4,8 +4,8 @@ use crate::utils::GetPosition;
 use super::context::*;
 use super::item::*;
 use super::project::*;
-use cranelift_isle::ast::Ident;
-use cranelift_isle::lexer::Pos;
+
+
 use lsp_server::*;
 use lsp_types::*;
 

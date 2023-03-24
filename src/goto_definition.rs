@@ -3,7 +3,7 @@ use super::project::*;
 use crate::item::ItemOrAccess;
 
 use crate::utils::GetPosition;
-use cranelift_isle::lexer::Pos;
+
 use lsp_server::*;
 use lsp_types::*;
 

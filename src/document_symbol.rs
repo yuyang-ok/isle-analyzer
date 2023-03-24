@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use super::context::*;
 use crate::project::{get_rule_target, AstProvider};
 use lsp_server::*;
@@ -125,7 +127,8 @@ impl DeclSymbolMap {
     fn rule_name(prio: Option<i64>) -> String {
         format!(
             "rule_{}",
-            prio.map(|x| x.to_string()).unwrap_or("xxx".to_string())
+            prio.map(|x| x.to_string())
+                .unwrap_or("prio_xxx".to_string())
         )
     }
 

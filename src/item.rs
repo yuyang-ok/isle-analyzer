@@ -55,15 +55,6 @@ pub enum Item {
     },
 }
 
-impl Item {
-    pub(crate) fn item_is_ty(&self) -> Option<&Type> {
-        match self {
-            Item::Type { ty } => Some(ty),
-            _ => None,
-        }
-    }
-}
-
 impl Default for Item {
     fn default() -> Self {
         Self::Dummy
@@ -95,16 +86,10 @@ impl Item {
         }
     }
 
+    #[allow(dead_code)]
     pub(crate) fn def_file(&self) -> usize {
         let (p, _) = self.def_loc();
         p.file
-    }
-
-    pub(crate) fn decl_nth_ty(&self, n: usize) -> Option<&Ident> {
-        match self {
-            Self::Decl { decl, .. } => decl.arg_tys.get(n),
-            _ => None,
-        }
     }
 }
 

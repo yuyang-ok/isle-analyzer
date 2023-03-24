@@ -234,6 +234,8 @@ impl Project {
             self.defs.defs[*s] = FALSE_DEF.clone();
         }
 
+        self.context.delete_old_defs(file_index);
+
         let mut dummy = DummyHandler {};
         self.run_visitor_for_file(p, &mut dummy);
 
@@ -446,13 +448,6 @@ impl VisitContext {
     }
 }
 
-impl Project {
-    pub(crate) fn file_exists(&self, p: &PathBuf) -> bool {
-        let p = p.as_os_str().to_str().unwrap();
-        self.defs.filenames.iter().any(|x| x.as_ref() == p)
-    }
-}
-
 pub trait ItemOrAccessHandler {
     /// Handle this item.
     fn handle_item_or_access(&mut self, p: &Project, _item: &ItemOrAccess);
@@ -623,12 +618,6 @@ impl Into<Ident> for SymbolAndPos {
     }
 }
 
-impl SymbolAndPos {
-    pub(crate) fn symbol_len(&self) -> usize {
-        self.symbol.len()
-    }
-}
-
 /// `ISLE` lexer compsite xxx and yyy together
 /// like xxx.yyy
 /// not a seperate token
@@ -639,14 +628,6 @@ pub(crate) enum SplitedSymbol {
     Two([SymbolAndPos; 2]),
 }
 
-impl SplitedSymbol {
-    pub(crate) fn to_vec(self) -> Vec<SymbolAndPos> {
-        match self {
-            SplitedSymbol::One(x) => vec![x],
-            SplitedSymbol::Two(two) => vec![two[0].clone(), two[1].clone()],
-        }
-    }
-}
 impl From<&Ident> for SplitedSymbol {
     fn from(value: &Ident) -> Self {
         Self::from(&(value.0.clone(), value.1))

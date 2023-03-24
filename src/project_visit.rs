@@ -119,7 +119,7 @@ impl Project {
             });
             provider.with_rule(|x| {
                 let name_and_pos = get_rule_target(&x.pattern);
-                if let Some((name, pos)) = name_and_pos {
+                if let Some((name, _pos)) = name_and_pos {
                     self.context.fix_decl_type(name, DeclKind::CONSTRUCTOR);
                 }
             });

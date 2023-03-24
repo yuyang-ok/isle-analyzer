@@ -1,10 +1,10 @@
+#![allow(dead_code)]
+
 use std::path::Path;
 
-use cranelift_isle::{ast::*, lexer::Lexer, parser};
+use cranelift_isle::ast::*;
 
-use super::comment::CommentExtrator;
-
-fn fmt(path: impl AsRef<Path>) -> String {
+fn fmt(_path: impl AsRef<Path>) -> String {
     unimplemented!()
 }
 
@@ -34,7 +34,7 @@ impl Fmt {
             Def::Converter(x) => self.format_converter(x),
         }
     }
-    fn format_pragma(&mut self, d: &Pragma) {
+    fn format_pragma(&mut self, _d: &Pragma) {
         // nothing here.
     }
     fn format_type(&mut self, d: &Type) {
@@ -68,11 +68,11 @@ impl Fmt {
         }
         self.result.push_str(")\n");
     }
-    fn format_rule(&mut self, d: &Rule) {}
-    fn format_extractor(&mut self, d: &Extractor) {}
-    fn format_decl(&mut self, d: &Decl) {}
-    fn format_extern(&mut self, d: &Extern) {}
-    fn format_converter(&mut self, d: &Converter) {}
+    fn format_rule(&mut self, _d: &Rule) {}
+    fn format_extractor(&mut self, _d: &Extractor) {}
+    fn format_decl(&mut self, _d: &Decl) {}
+    fn format_extern(&mut self, _d: &Extern) {}
+    fn format_converter(&mut self, _d: &Converter) {}
 
     fn ident(n: usize) -> String {
         "  ".to_string().repeat(n)
@@ -81,7 +81,9 @@ impl Fmt {
 
 #[test]
 fn test_enum() {
-    let mut l = Lexer::from_str(
+    use cranelift_isle::lexer::Lexer;
+    use cranelift_isle::parser::parse;
+    let l = Lexer::from_str(
         r#"
 
     (type RangeView extern
@@ -95,7 +97,7 @@ fn test_enum() {
         "",
     )
     .unwrap();
-    let a = parser::parse(l).unwrap();
+    let a = parse(l).unwrap();
     let mut f = Fmt::new();
     f.format_defs(&a.defs);
     eprintln!("{}", f.result);
