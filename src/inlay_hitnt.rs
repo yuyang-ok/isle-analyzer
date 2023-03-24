@@ -5,7 +5,6 @@ use super::context::*;
 use super::item::*;
 use super::project::*;
 
-
 use lsp_server::*;
 use lsp_types::*;
 
@@ -105,14 +104,14 @@ fn mk_inlay_hits(pos: Position, label: InlayHintLabel, kind: InlayHintKind) -> I
 }
 
 /// There command should implemented in `LSP` client.
-pub enum MoveAnalyzerClientCommands {
+pub enum ISLEAnalyzerClientCommands {
     GotoDefinition(Location),
 }
 
-impl MoveAnalyzerClientCommands {
+impl ISLEAnalyzerClientCommands {
     pub(crate) fn to_lsp_command(self) -> Command {
         match self {
-            MoveAnalyzerClientCommands::GotoDefinition(x) => Command::new(
+            ISLEAnalyzerClientCommands::GotoDefinition(x) => Command::new(
                 "Goto Definition".to_string(),
                 "isle-analyzer.goto_definition".to_string(),
                 Some(vec![serde_json::to_value(PathAndRange::from(&x)).unwrap()]),
@@ -150,7 +149,7 @@ fn ty_inlay_hints_label_parts(ty: &String, p: &Project) -> InlayHintLabel {
         )),
         location: None,
         command: if let Some(loc) = p.mk_location(&p.context.query_item_clone(ty).def_loc()) {
-            Some(MoveAnalyzerClientCommands::GotoDefinition(loc).to_lsp_command())
+            Some(ISLEAnalyzerClientCommands::GotoDefinition(loc).to_lsp_command())
         } else {
             None
         },
