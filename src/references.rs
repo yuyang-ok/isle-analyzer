@@ -58,7 +58,7 @@ pub fn on_references_request(context: &mut Context, request: &Request) {
         .unwrap();
 }
 
-struct Handler {
+pub(crate) struct Handler {
     def_loc: (Pos, u32),
     include_declaration: bool,
     refs: HashSet<(Pos, u32)>,

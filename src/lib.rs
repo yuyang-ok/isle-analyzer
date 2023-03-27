@@ -18,6 +18,7 @@ pub mod item;
 pub mod project;
 pub mod project_visit;
 pub mod references;
+pub mod rename;
 pub mod semantic_tokens;
 pub mod utils;
 use std::collections::HashSet;

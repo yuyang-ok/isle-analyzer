@@ -4,7 +4,7 @@ use crossbeam::channel::select;
 
 use isle_analyzer::{
     completion::on_completion_request, context::*, document_symbol, goto_definition, hover,
-    inlay_hitnt, project::Project, references, semantic_tokens,
+    inlay_hitnt, project::Project, references, rename::on_rename, semantic_tokens,
 };
 use log::*;
 use lsp_types::notification::Notification;
@@ -57,6 +57,7 @@ fn main() {
         connection,
         project: Project::from_walk().unwrap(),
     };
+
     let (id, _client_response) = context
         .connection
         .initialize_start()
@@ -98,6 +99,7 @@ fn main() {
             },
             completion_item: None,
         }),
+        rename_provider: Some(OneOf::Left(true)),
         definition_provider: Some(OneOf::Left(true)),
         type_definition_provider: Some(TypeDefinitionProviderCapability::Simple(true)),
         references_provider: Some(OneOf::Left(true)),
@@ -135,9 +137,7 @@ fn main() {
                         match notification.method.as_str() {
                             lsp_types::notification::Exit::METHOD => break,
                             lsp_types::notification::Cancel::METHOD => {
-                                // TODO: Currently the server does not implement request cancellation.
-                                // It ought to, especially once it begins processing requests that may
-                                // take a long time to respond to.
+
                             }
                             _ => on_notification(&mut context, &notification   ),
                         }
@@ -172,6 +172,9 @@ fn on_request(context: &mut Context, request: &lsp_server::Request) {
         }
         lsp_types::request::InlayHintRequest::METHOD => {
             inlay_hitnt::on_inlay_hints(context, request);
+        }
+        lsp_types::request::Rename::METHOD => {
+            on_rename(context, request);
         }
         _ => log::error!("handle request '{}' from client", request.method),
     }
