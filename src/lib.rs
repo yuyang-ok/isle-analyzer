@@ -18,6 +18,7 @@ pub mod item;
 pub mod project;
 pub mod project_visit;
 pub mod references;
+pub mod reload;
 pub mod rename;
 pub mod semantic_tokens;
 pub mod utils;
@@ -57,7 +58,6 @@ lazy_static! {
 
 pub(crate) fn to_lsp_range<T: GetPosAndLength>(x: &T) -> Range {
     let (pos, length) = x.get_pos_and_len();
-
     let line = (pos.line - 1) as u32;
     let col = pos.col as u32;
     Range {

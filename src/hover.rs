@@ -50,9 +50,19 @@ fn hover_on_item_or_access(ia: &ItemOrAccess, p: &Project) -> String {
         } else {
             ""
         };
-        format!("{}\n{}", comment, item)
+        let item_str = match item {
+            Item::EnumVariant { v } if v.fields.len() > 0 => {
+                let mut s = format!("{}\n\n", v.name.0);
+                for f in v.fields.iter() {
+                    // FIXME \n not make a newline on UI
+                    s.push_str(format!("  {}:{}\n\n", f.name.0, f.ty.0).as_str());
+                }
+                s
+            }
+            _ => format!("{}", item),
+        };
+        format!("{}\n{}", comment, item_str)
     };
-
     match ia {
         ItemOrAccess::Item(item) => item_hover(item),
         ItemOrAccess::Access(acc) => item_hover(acc.def_item()),

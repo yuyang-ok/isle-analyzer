@@ -118,7 +118,6 @@ impl DocumentComments {
                 Self::Comment(value)
             }
         }
-
         // first sort.
         let mut s = Vec::with_capacity(pos.len() + extractor.comments.len());
         pos.iter().for_each(|x| s.push(PosOrComment::from(x)));

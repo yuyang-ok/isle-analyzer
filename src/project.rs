@@ -40,7 +40,7 @@ impl Project {
     pub fn get_filenames(&self) -> &Vec<Arc<str>> {
         &self.defs.filenames
     }
-
+    #[allow(dead_code)]
     pub fn from_walk() -> Result<Self, cranelift_isle::error::Errors> {
         let mut files = Vec::new();
         for x in walkdir::WalkDir::new(std::env::current_dir().unwrap()) {
@@ -543,12 +543,29 @@ pub(crate) struct VecDefAstProvider<'a> {
 }
 
 impl<'a> VecDefAstProvider<'a> {
-    fn new(defs: Vec<&'a Def>) -> Self {
+    pub(crate) fn new(defs: Vec<&'a Def>) -> Self {
         Self { defs }
     }
 }
 
 impl<'a> AstProvider for VecDefAstProvider<'a> {
+    fn with_def(&self, mut call_back: impl FnMut(&Def)) {
+        self.defs.iter().for_each(|x| {
+            if let Some(pos) = get_decl_pos(x) {
+                if pos.clone() != UNKNOWN_POS {
+                    call_back(x);
+                }
+            }
+        })
+    }
+}
+
+#[derive(Clone)]
+pub(crate) struct RefVecDefAstProvider<'a> {
+    pub(crate) defs: &'a Vec<Def>,
+}
+
+impl<'a> AstProvider for RefVecDefAstProvider<'a> {
     fn with_def(&self, mut call_back: impl FnMut(&Def)) {
         self.defs.iter().for_each(|x| {
             if let Some(pos) = get_decl_pos(x) {

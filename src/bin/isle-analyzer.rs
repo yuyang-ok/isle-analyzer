@@ -2,6 +2,7 @@ use cranelift_isle::lexer::Pos;
 
 use crossbeam::channel::select;
 
+use isle_analyzer::reload;
 use isle_analyzer::{
     completion::on_completion_request, context::*, document_symbol, goto_definition, hover,
     inlay_hitnt, project::Project, references, rename::on_rename, semantic_tokens,
@@ -55,7 +56,7 @@ fn main() {
     let (connection, io_threads) = Connection::stdio();
     let mut context = Context {
         connection,
-        project: Project::from_walk().unwrap(),
+        project: Project::empty(),
     };
 
     let (id, _client_response) = context
@@ -175,6 +176,9 @@ fn on_request(context: &mut Context, request: &lsp_server::Request) {
         }
         lsp_types::request::Rename::METHOD => {
             on_rename(context, request);
+        }
+        "isle/reload" => {
+            reload::on_reload(context, request);
         }
         _ => log::error!("handle request '{}' from client", request.method),
     }

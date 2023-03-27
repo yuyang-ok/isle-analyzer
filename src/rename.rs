@@ -45,7 +45,6 @@ pub fn on_rename(context: &Context, request: &Request) {
         None => return,
     };
     let mut refs = super::references::Handler::new(def_loc, true);
-
     context.project.run_full_visitor(&mut refs);
     let mut r = Results::default();
     for v in refs.to_locations(&context.project).into_iter() {

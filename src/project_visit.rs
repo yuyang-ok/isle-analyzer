@@ -158,6 +158,9 @@ impl Project {
             }
             Extern::Const { .. } => {}
         });
+        if handler.visit_body() == false {
+            return;
+        }
 
         // visit extractor body.
         provider.with_extractor(|ext| {
@@ -196,7 +199,6 @@ impl Project {
                                 handler.handle_item_or_access(self, &item);
                                 self.context.enter_item(name.0.clone(), item)
                             }
-                            // 1
                             self.apply_extractor(&ext.template, handler);
                         });
                     }
@@ -209,15 +211,17 @@ impl Project {
             let call = || {
                 self.apply_matcher(&d.pattern, handler);
                 for i in d.iflets.iter() {
+                    self.apply_matcher(&i.pattern, handler);
+                    if handler.finished() {
+                        return;
+                    }
                     self.apply_expr(&i.expr, handler);
                     if handler.finished() {
                         return;
                     }
-                    self.apply_matcher(&i.pattern, handler);
                 }
                 self.apply_expr(&d.expr, handler);
             };
-
             self.context.enter_scope(call);
         });
     }
@@ -437,7 +441,6 @@ impl Project {
                                         fields: vec![],
                                         pos: y.pos,
                                     });
-
                                 let item = ItemOrAccess::Access(Access {
                                     access: y.clone().into(),
                                     kind: AccessKind::ApplyVariant(x.symbol.clone()),
@@ -465,10 +468,7 @@ impl Project {
                 let item = ItemOrAccess::Access(Access {
                     access: name.clone(),
                     kind: AccessKind::ApplyVar,
-                    def: self
-                        .context
-                        .query_item(&name.0, |x| x.clone())
-                        .unwrap_or_default(),
+                    def: self.context.query_item_clone(&name.0),
                 });
                 handler.handle_item_or_access(self, &item);
             }
@@ -477,10 +477,7 @@ impl Project {
                 let item = ItemOrAccess::Access(Access {
                     access: val.clone(),
                     kind: AccessKind::ApplyConst,
-                    def: self
-                        .context
-                        .query_const(&val.0, |x| x.clone())
-                        .unwrap_or_default(),
+                    def: self.context.query_const_clone(&val.0),
                 });
                 handler.handle_item_or_access(self, &item);
             }
@@ -508,7 +505,6 @@ impl Project {
                     }
                     self.apply_expr(body.as_ref(), handler);
                 };
-
                 self.context.enter_scope(call);
             }
         }
@@ -547,9 +543,7 @@ impl Project {
                 }
                 self.apply_extractor(subpat.as_ref(), handler);
             }
-            Pattern::ConstInt { .. } => {
-                // ok
-            }
+            Pattern::ConstInt { .. } => {}
             Pattern::ConstPrim { val, .. } => {
                 let item = ItemOrAccess::Access(Access {
                     access: val.clone(),
@@ -585,7 +579,6 @@ impl Project {
                             .context
                             .query_item(&x.symbol, |x| x.clone())
                             .unwrap_or_default();
-
                         let item = ItemOrAccess::Access(Access {
                             kind: AccessKind::ApplyEORC,
                             access: sym.clone(),
@@ -621,7 +614,6 @@ impl Project {
                         };
                     }
                 }
-
                 for a in args.iter() {
                     self.apply_extractor(a, handler);
                     if handler.finished() {
@@ -629,9 +621,7 @@ impl Project {
                     }
                 }
             }
-            Pattern::Wildcard { pos: _ } => {
-                // nothing here.
-            }
+            Pattern::Wildcard { pos: _ } => {}
             Pattern::And { subpats, pos: _ } => {
                 for s in subpats.iter() {
                     self.apply_extractor(s, handler);

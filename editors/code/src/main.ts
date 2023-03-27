@@ -6,9 +6,44 @@ import { Configuration } from './configuration';
 import { Context } from './context';
 import { Extension } from './extension';
 import { log } from './log';
+import * as fs from 'fs';
+import * as path from 'path';
 
 import * as childProcess from 'child_process';
 import * as vscode from 'vscode';
+class TraverseDirItem {
+  path: string;
+
+  is_file: boolean;
+
+  constructor(path: string,
+    is_file: boolean) {
+    this.path = path;
+    this.is_file = is_file;
+  }
+}
+
+function traverseDir(dir: any, call_back: (path: TraverseDirItem) => void): void {
+  fs.readdirSync(dir).forEach(file => {
+    const fullPath = path.join(dir, file);
+    if (fs.lstatSync(fullPath).isDirectory()) {
+      call_back(new TraverseDirItem(fullPath, false));
+      traverseDir(fullPath, call_back);
+    } else {
+      call_back(new TraverseDirItem(fullPath, true));
+    }
+  });
+}
+
+function workSpaceDir(): string | undefined {
+  if (vscode.workspace.workspaceFolders !== undefined) {
+    if (vscode.workspace.workspaceFolders[0] !== undefined) {
+      const f = vscode.workspace.workspaceFolders[0].uri.fsPath;
+      return f;
+    }
+  }
+  return undefined;
+}
 
 
 /**
@@ -34,41 +69,31 @@ async function serverVersion(context: Readonly<Context>): Promise<void> {
   }
 }
 
-/**
- * The entry point to this VS Code extension.
- *
- * As per [the VS Code documentation on activation
- * events](https://code.visualstudio.com/api/references/activation-events), 'an extension must
- * export an `activate()` function from its main module and it will be invoked only once by
- * VS Code when any of the specified activation events [are] emitted."
- *
- * Activation events for this extension are listed in its `package.json` file, under the key
- * `"activationEvents"`.
- *
- * In order to achieve synchronous activation, mark the function as an asynchronous function,
- * so that you can wait for the activation to complete by await
- */
 
-
-// class TerminalManager {
-//   all: Map<string, vscode.Terminal | undefined>;
-
-//   constructor() {
-//     this.all = new Map();
-//   }
-
-//   alloc(typ: string, new_fun: () => vscode.Terminal): vscode.Terminal {
-//     const x = this.all.get(typ);
-//     if (x === undefined || x.exitStatus !== undefined) {
-//       const x = new_fun();
-//       this.all.set(typ, x);
-//       return x;
-//     }
-//     return x;
-//   }
-// }
-
-// const terminalManager = new TerminalManager();
+async function reload(context: Context): Promise<void> {
+  const isle_files = new Array<string>();
+  traverseDir(workSpaceDir(), (e) => {
+    if (e.is_file && e.path.endsWith('.isle')) {
+      isle_files.push(e.path);
+    }
+  });
+  const isle_files_pick_items = new Array<vscode.QuickPickItem>();
+  isle_files.forEach((e) => {
+    isle_files_pick_items.push({ label: e, picked: true });
+  });
+  const isle_picked = await vscode.window.showQuickPick(isle_files_pick_items, {
+    canPickMany: true,
+    title: "Select ISLE file you want to include Project."
+  });
+  const isle_files2 = new Array<string>();
+  isle_picked?.forEach((e) => {
+    isle_files2.push(e.label);
+  });
+  const client = context.getClient();
+  if (client !== undefined) {
+    void client.sendRequest('isle/reload', { 'files': isle_files2 });
+  }
+}
 
 
 export async function activate(
@@ -149,6 +174,6 @@ export async function activate(
   // All other utilities provided by this extension occur via the language server.
   await context.startClient();
 
-
-
+  void reload(context);
 }
+

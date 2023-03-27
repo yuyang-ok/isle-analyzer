@@ -108,6 +108,7 @@ impl DeclKind {
 pub enum AccessKind {
     AppleType,
     DeclExtern,
+    /// Apply extractor or constructor.
     ApplyEORC,
     ExtractVar,
     ApplyConst,

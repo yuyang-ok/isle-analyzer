@@ -9,12 +9,11 @@
 
 
 
-
-
-
 ;; Our high-level, RISC-y input IR.
 (type HighLevelInst
-  (enum (Add (a Value) (b Value))
+  (enum 
+      ;;; 1111
+      (Add (a Value) (b Value))
         (Load (addr Value))
         (Const (c i32))))
 
@@ -105,4 +104,3 @@
       (LowLevelInst.Load offset (put_in_reg base)))
 
 
-      
