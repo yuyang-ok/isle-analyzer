@@ -9,7 +9,7 @@
 	"preview": true,
 	"homepage": "https://github.com/yuyang-ok/isle-analyzer",
 	"repository": {
-		"url": "https://github.com/yuyang-ok/isle-analyzer/issues",
+		"url": "https://github.com/yuyang-ok/isle-analyzer",
 		"type": "git"
 	},
 	"bugs": {
@@ -99,8 +99,7 @@
 		"pretest": "npm run compile && npm run lint",
 		"test": "node ./out/tests/runTests.js",
 		"dev": "npm run pretest && cross-env mode=dev node ./out/tests/runTests.js",
-		"vscode:prepublish": "npm run pretest",
-		"package": "npm run pretest && vsce package -o move-analyzer.vsix",
+		"package": "npm run pretest && vsce package -o isle-analyzer.vsix",
 		"publish": "npm run pretest && npm run test && vsce publish"
 	},
 	"dependencies": {

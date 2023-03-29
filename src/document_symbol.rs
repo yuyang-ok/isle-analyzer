@@ -64,7 +64,7 @@ pub fn on_document_symbol_request(context: &Context, request: &Request) {
         if let Some((name, pos)) = name_and_pos {
             let l = context.project.mk_location(&(pos, name.len()));
             if let Some(l) = l {
-                decls.insert_decl_rule(
+                decls.insert_decl_member(
                     name.clone(),
                     DocumentSymbol {
                         name: DeclSymbolMap::rule_name(x.prio),
@@ -86,10 +86,38 @@ pub fn on_document_symbol_request(context: &Context, request: &Request) {
     asts.with_extractor(|x| {
         let l = context.project.mk_location(&x.term);
         if let Some(l) = l {
-            decls.insert_decl_rule(
+            decls.insert_decl_member(
                 x.term.0.clone(),
                 DocumentSymbol {
                     name: "extractor".to_string(),
+                    detail: None,
+                    kind: SymbolKind::METHOD,
+                    tags: None,
+                    deprecated: None,
+                    range: l.range,
+                    selection_range: l.range,
+                    children: None,
+                },
+            );
+        }
+    });
+    asts.with_extern(|x| {
+        let (term, func) = match x {
+            cranelift_isle::ast::Extern::Extractor { func, term, .. } => (term, func),
+            cranelift_isle::ast::Extern::Constructor { func, term, .. } => (term, func),
+            cranelift_isle::ast::Extern::Const {
+                name: _,
+                ty: _,
+                pos: _,
+            } => return,
+        };
+
+        let l = context.project.mk_location(func);
+        if let Some(l) = l {
+            decls.insert_decl_member(
+                term.0.clone(),
+                DocumentSymbol {
+                    name: func.0.clone(),
                     detail: None,
                     kind: SymbolKind::METHOD,
                     tags: None,
@@ -136,7 +164,7 @@ impl DeclSymbolMap {
         )
     }
 
-    fn insert_decl_rule(&mut self, name: String, d: DocumentSymbol) {
+    fn insert_decl_member(&mut self, name: String, d: DocumentSymbol) {
         if let Some(x) = self.decls.get_mut(&name) {
             x.subs.push(d);
         } else {

@@ -1,1 +1,1 @@
-# isle-analyzer
+# isle-analyzer LSP server.
