@@ -1,7 +1,7 @@
 use cranelift_isle::lexer::Pos;
 
+use clap::Parser;
 use crossbeam::channel::select;
-
 use isle_analyzer::reload;
 use isle_analyzer::{
     completion::on_completion_request, context::*, document_symbol, goto_definition, hover,
@@ -36,10 +36,13 @@ pub fn init_log() {
 }
 use lsp_server::*;
 
+#[derive(Parser)]
+#[clap(author, version, about)]
+struct Options {}
+
 fn main() {
-    for _args in std::env::args().into_iter() {
-        // todo handle this.
-    }
+    Options::parse();
+
     init_log();
     // stdio is used to communicate Language Server Protocol requests and responses.
     // stderr is used for logging (and, when Visual Studio Code is used to communicate with this
@@ -54,6 +57,7 @@ fn main() {
     );
 
     let (connection, io_threads) = Connection::stdio();
+
     let mut context = Context {
         connection,
         project: Project::empty(),
@@ -179,6 +183,7 @@ fn on_request(context: &mut Context, request: &lsp_server::Request) {
         }
         "isle/reload" => {
             reload::on_reload(context, request);
+            send_diag(context);
         }
         _ => log::error!("handle request '{}' from client", request.method),
     }

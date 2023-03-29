@@ -19,3 +19,4 @@ serde_json = "1.0.64"
 cranelift-isle = {path = "../wasmtime/cranelift/isle/isle" , version = "*"}
 url = "2.2.2"
 walkdir = "2"
+clap = { version = "4.2.0", features = ["derive"] }

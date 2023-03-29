@@ -1,10 +1,7 @@
 #![allow(deprecated)]
 
 use super::context::*;
-use crate::{
-    project::{get_rule_target, AstProvider, RefVecDefAstProvider},
-    send_err,
-};
+use crate::project::{get_rule_target, AstProvider, RefVecDefAstProvider};
 use cranelift_isle::{lexer::Lexer, parser::parse};
 use lsp_server::*;
 use lsp_types::*;

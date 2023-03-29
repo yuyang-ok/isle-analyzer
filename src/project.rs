@@ -519,15 +519,21 @@ impl<'a> ProjectAstProvider<'a> {
         Self { p }
     }
 }
+macro_rules! call_decl {
+    ($x:expr,$call_back:ident) => {{
+        if get_decl_pos($x)
+            .map(|x| x.file != UNKNOWN_POS.file)
+            .unwrap_or(false)
+        {
+            $call_back($x);
+        }
+    }};
+}
 
 impl<'a> AstProvider for ProjectAstProvider<'a> {
     fn with_def(&self, mut call_back: impl FnMut(&Def)) {
         self.p.defs.defs.iter().for_each(|x| {
-            if let Some(pos) = get_decl_pos(x) {
-                if pos.clone() != UNKNOWN_POS {
-                    call_back(x);
-                }
-            }
+            call_decl!(x, call_back);
         });
     }
 }
@@ -546,11 +552,7 @@ impl<'a> VecDefAstProvider<'a> {
 impl<'a> AstProvider for VecDefAstProvider<'a> {
     fn with_def(&self, mut call_back: impl FnMut(&Def)) {
         self.defs.iter().for_each(|x| {
-            if let Some(pos) = get_decl_pos(x) {
-                if pos.clone() != UNKNOWN_POS {
-                    call_back(x);
-                }
-            }
+            call_decl!(x, call_back);
         })
     }
 }
@@ -563,11 +565,7 @@ pub(crate) struct RefVecDefAstProvider<'a> {
 impl<'a> AstProvider for RefVecDefAstProvider<'a> {
     fn with_def(&self, mut call_back: impl FnMut(&Def)) {
         self.defs.iter().for_each(|x| {
-            if let Some(pos) = get_decl_pos(x) {
-                if pos.clone() != UNKNOWN_POS {
-                    call_back(x);
-                }
-            }
+            call_decl!(x, call_back);
         })
     }
 }
