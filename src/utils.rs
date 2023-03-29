@@ -13,8 +13,11 @@ pub trait GetPosition {
         u32, // line zero-based
         u32, // column zero-based
     );
-    fn in_range(x: &impl GetPosition, range: &Location) -> bool {
-        let (filepath, line, col) = x.get_position();
+}
+
+impl dyn GetPosition {
+    pub(crate) fn in_range(&self, range: &Location) -> bool {
+        let (filepath, line, col) = self.get_position();
         if filepath != range.uri {
             return false;
         }
@@ -33,7 +36,6 @@ pub trait GetPosition {
         true
     }
 }
-
 /// Path concat from
 pub fn path_concat(p1: &Path, p2: &Path) -> PathBuf {
     let p2: Vec<_> = p2.components().collect();

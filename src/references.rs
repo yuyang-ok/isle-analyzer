@@ -21,15 +21,6 @@ pub fn on_references_request(context: &mut Context, request: &Request) {
     context
         .project
         .run_visitor_for_file(&fpath.to_file_path().unwrap(), &mut goto_definition);
-    let _send_err = || {
-        let err = format!("{:?}{}:{} not found definition.", fpath.clone(), line, col);
-        let r = Response::new_err(request.id.clone(), ErrorCode::UnknownErrorCode as i32, err);
-        context
-            .connection
-            .sender
-            .send(Message::Response(r))
-            .unwrap();
-    };
 
     let def_loc = match goto_definition.result_item_or_access {
         Some(x) => match x {

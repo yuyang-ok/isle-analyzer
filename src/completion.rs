@@ -57,7 +57,6 @@ pub fn on_completion_request(context: &Context, request: &Request) {
         });
         result.extend(keywords().into_iter());
     }
-
     let ret = Some(CompletionResponse::Array(result));
     let r = Response::new_ok(request.id.clone(), serde_json::to_value(ret).unwrap());
     context
@@ -85,7 +84,7 @@ impl Handler {
         }
     }
     fn match_loc(&self, range: &Location) -> bool {
-        Self::in_range(self, range)
+        (self as &dyn GetPosition).in_range(range)
     }
 }
 

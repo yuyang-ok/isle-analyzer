@@ -1,10 +1,16 @@
 #![allow(deprecated)]
 
 use super::context::*;
-use crate::project::{get_rule_target, AstProvider};
+use crate::{
+    project::{get_rule_target, AstProvider, RefVecDefAstProvider},
+    send_err,
+};
+use cranelift_isle::{lexer::Lexer, parser::parse};
 use lsp_server::*;
 use lsp_types::*;
 use std::collections::HashMap;
+
+/// Handle documen symbol for LSP server
 
 pub fn on_document_symbol_request(context: &Context, request: &Request) {
     let parameters = serde_json::from_value::<DocumentSymbolParams>(request.params.clone())
@@ -12,12 +18,13 @@ pub fn on_document_symbol_request(context: &Context, request: &Request) {
     let fpath = parameters.text_document.uri.to_file_path().unwrap();
     let mut result = vec![];
     let mut decls = DeclSymbolMap::new();
-    let asts = match context.project.found_file_defs(&fpath) {
-        Some(x) => x,
-        None => {
-            return;
-        }
+    let lexer = Lexer::from_files(vec![fpath.clone()]).unwrap();
+    let asts = match parse(lexer) {
+        Ok(x) => x,
+        Err(_) => return,
     };
+    let asts = RefVecDefAstProvider { defs: &asts.defs };
+
     asts.with_type(|t| {
         let l = context.project.mk_location(t);
         if let Some(l) = l {

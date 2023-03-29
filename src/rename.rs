@@ -6,13 +6,14 @@ use crate::item::ItemOrAccess;
 
 use super::item::*;
 
+use super::send_err;
 use lsp_server::*;
 use lsp_types::*;
 
-/// Handles go-to-def request of the language server.
+/// Hanlde rename reqeust for LSP server
 pub fn on_rename(context: &Context, request: &Request) {
     let parameters = serde_json::from_value::<RenameParams>(request.params.clone())
-        .expect("could not deserialize go-to-def request");
+        .expect("could not deserialize rename request");
     let fpath = parameters.text_document_position.text_document.uri;
     let loc = parameters.text_document_position.position;
     let line = loc.line;
@@ -23,15 +24,7 @@ pub fn on_rename(context: &Context, request: &Request) {
         line,
         col,
     );
-    let _send_err = || {
-        let err = format!("{:?}{}:{} not found definition.", fpath.clone(), line, col);
-        let r = Response::new_err(request.id.clone(), ErrorCode::UnknownErrorCode as i32, err);
-        context
-            .connection
-            .sender
-            .send(Message::Response(r))
-            .unwrap();
-    };
+
     let mut goto_definition = super::goto_definition::Handler::new(fpath.clone(), line, col);
     context
         .project
@@ -42,7 +35,14 @@ pub fn on_rename(context: &Context, request: &Request) {
             ItemOrAccess::Item(d) => d.def_loc(),
             ItemOrAccess::Access(Access { def, .. }) => def.def_loc(),
         },
-        None => return,
+        None => {
+            send_err(
+                context,
+                "rename can't find def loc".to_string(),
+                request.id.clone(),
+            );
+            return;
+        }
     };
     let mut refs = super::references::Handler::new(def_loc, true);
     context.project.run_full_visitor(&mut refs);

@@ -82,7 +82,7 @@ impl ItemOrAccessHandler for Handler {
                 let def_loc = item.def_loc();
                 let l = p.mk_location(&(def_loc.0, def_loc.1));
                 if let Some(l) = l {
-                    if Self::in_range(self, &l) {
+                    if (self as &dyn GetPosition).in_range(&l) {
                         self.result = Some(l.clone());
                         self.result_item_or_access = Some(item_or_access.clone());
                     }
@@ -92,7 +92,7 @@ impl ItemOrAccessHandler for Handler {
                 let (acc_pos, def, length) = access.access_def_loc();
                 let l = p.mk_location(&(acc_pos, length));
                 if let Some(l) = l {
-                    if Self::in_range(self, &l) {
+                    if (self as &dyn GetPosition).in_range(&l) {
                         let l = p.mk_location(&(def, length));
                         if let Some(l) = l {
                             self.result = Some(l);

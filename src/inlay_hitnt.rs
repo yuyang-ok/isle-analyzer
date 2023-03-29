@@ -43,7 +43,7 @@ impl Handler {
     fn in_range<T: GetPosAndLength>(&self, project: &Project, pos: &T) -> Option<Location> {
         let l = project.mk_location(pos);
         if let Some(l) = l {
-            if Location::in_range(&l, &self.range) {
+            if (&l as &dyn GetPosition).in_range(&self.range) {
                 Some(l)
             } else {
                 None

@@ -29,6 +29,18 @@
 		 
 	],
 	"contributes": {
+		"commands" : [
+			{
+				"command": "isle-analyzer.serverVersion",
+				"title": "Show Server Version",
+				"category": "ISLE Analyzer"
+			},
+			{
+				"command": "isle-analyzer.reload",
+				"title": "Reload ISLE project",
+				"category": "ISLE Analyzer"
+			}
+		], 
 		"configuration": {
 			"type": "object",
 			"title": "ISLE Analyzer",
@@ -67,7 +79,17 @@
 				],
 				"configuration": "./language-configuration.json"
 			}
-		]
+		],
+		"menus": {
+			"commandPalette" : [ 
+				{
+					"command": "isle-analyzer.serverVersion"
+				},
+				{
+					"command": "isle-analyzer.reload"
+				}
+			]
+		} 
 	},
 	"scripts": {
 		"compile": "tsc -p ./ && cd ../../ && cargo build",

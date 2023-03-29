@@ -70,7 +70,7 @@ async function serverVersion(context: Readonly<Context>): Promise<void> {
 }
 
 
-async function reload(context: Context): Promise<void> {
+async function reload(context: Readonly<Context>): Promise<void> {
   const isle_files = new Array<string>();
   traverseDir(workSpaceDir(), (e) => {
     if (e.is_file && e.path.endsWith('.isle')) {
@@ -83,10 +83,16 @@ async function reload(context: Context): Promise<void> {
   });
   const isle_picked = await vscode.window.showQuickPick(isle_files_pick_items, {
     canPickMany: true,
-    title: "Select ISLE file you want to include Project."
+    title: 'Select ISLE file you want to include Project.',
   });
+  if (isle_picked === undefined || isle_picked.length === 0) {
+    void vscode.window.showInformationMessage(
+      'You din\'t pick ISLE files,we can try reload ISLE files later.',
+    );
+    return;
+  }
   const isle_files2 = new Array<string>();
-  isle_picked?.forEach((e) => {
+  isle_picked.forEach((e) => {
     isle_files2.push(e.label);
   });
   const client = context.getClient();
@@ -94,7 +100,6 @@ async function reload(context: Context): Promise<void> {
     void client.sendRequest('isle/reload', { 'files': isle_files2 });
   }
 }
-
 
 export async function activate(
   extensionContext: Readonly<vscode.ExtensionContext>,
@@ -147,6 +152,7 @@ export async function activate(
 
   // Register handlers for VS Code commands that the user explicitly issues.
   context.registerCommand('serverVersion', serverVersion);
+  context.registerCommand('reload', reload);
 
   context.registerCommand('goto_definition', async (_context, ...args) => {
     const loc = args[0] as { range: vscode.Range; fpath: string };
@@ -175,5 +181,7 @@ export async function activate(
   await context.startClient();
 
   void reload(context);
+
+
 }
 

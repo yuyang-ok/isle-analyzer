@@ -15,10 +15,10 @@ use cranelift_isle::{
 use lsp_server::*;
 use lsp_types::*;
 
-/// Handles go-to-def request of the language server.
+/// Handles semantic tokens request for LSP server.
 pub fn on_senantic_tokens(context: &Context, request: &Request) {
     let parameters = serde_json::from_value::<SemanticTokensParams>(request.params.clone())
-        .expect("could not deserialize go-to-def request");
+        .expect("could not deserialize semantic tokens request");
     let fpath = parameters.text_document.uri.to_file_path().unwrap();
     let lexer = Lexer::from_files(vec![fpath.clone()]).unwrap();
     let asts = match parse(lexer) {
@@ -92,13 +92,6 @@ struct RangeToken {
     range: Range,
     token_type: TokenTypes,
     modifiers: Option<TokenModifier>,
-}
-
-#[allow(unused_macros)]
-macro_rules! none_as_modifier {
-    () => {{
-        None as Option<TokenModifier>
-    }};
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -179,7 +172,6 @@ impl AstSemanticTokenCollector {
             self.collect_pattern(&i.pattern, CollectPatternType::Matcher);
             self.collect_expr(&i.expr);
         }
-
         self.collect_expr(&d.expr);
     }
 
@@ -203,7 +195,13 @@ impl AstSemanticTokenCollector {
                 });
             }
             Expr::ConstInt { val: _, pos: _ } => {}
-            Expr::ConstPrim { val: _, pos: _ } => {}
+            Expr::ConstPrim { val, pos: _ } => {
+                self.results.push(RangeToken {
+                    range: to_lsp_range(val),
+                    token_type: TokenTypes::String,
+                    modifiers: None,
+                });
+            }
 
             Expr::Let { defs, body, .. } => {
                 for d in defs.iter() {
@@ -267,7 +265,7 @@ impl AstSemanticTokenCollector {
             Pattern::ConstPrim { val, .. } => {
                 self.results.push(RangeToken {
                     range: to_lsp_range(val),
-                    token_type: TokenTypes::Number,
+                    token_type: TokenTypes::String,
                     modifiers: None,
                 });
             }

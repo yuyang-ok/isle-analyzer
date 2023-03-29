@@ -71,3 +71,13 @@ pub(crate) fn to_lsp_range<T: GetPosAndLength>(x: &T) -> Range {
         },
     }
 }
+
+fn send_err(context: &context::Context, msg: String, id: lsp_server::RequestId) {
+    use lsp_server::*;
+    let r = Response::new_err(id, ErrorCode::UnknownErrorCode as i32, msg);
+    context
+        .connection
+        .sender
+        .send(Message::Response(r))
+        .unwrap();
+}
