@@ -72,9 +72,16 @@ async function serverVersion(context: Readonly<Context>): Promise<void> {
 
 async function reload(context: Readonly<Context>): Promise<void> {
   const isle_files = new Array<string>();
+  const d_arr = context.configuration.externalDependencies();
+  const d_set = new Set<string>();
+  d_arr.forEach((e) => {
+    d_set.add(e);
+  });
   traverseDir(workSpaceDir(), (e) => {
     if (e.is_file && e.path.endsWith('.isle')) {
-      isle_files.push(e.path);
+      if (d_set.has(e.path) == false) {
+        isle_files.push(e.path);
+      }
     }
   });
   const isle_files_pick_items = new Array<vscode.QuickPickItem>();
@@ -95,6 +102,10 @@ async function reload(context: Readonly<Context>): Promise<void> {
   isle_picked.forEach((e) => {
     isle_files2.push(e.label);
   });
+  d_set.forEach((e) => {
+    isle_files2.push(e);
+  });
+
   const client = context.getClient();
   if (client !== undefined) {
     void client.sendRequest('isle/reload', { 'files': isle_files2 });

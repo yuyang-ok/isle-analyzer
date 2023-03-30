@@ -12,6 +12,9 @@ import * as Path from 'path';
  * This provides a more strongly typed interface to the configuration values specified in this
  * extension's `package.json`, under the key `"contributes.configuration.properties"`.
  */
+const defaultName = 'isle-analyzer';
+
+
 export class Configuration {
     private readonly configuration: vscode.WorkspaceConfiguration;
 
@@ -26,7 +29,7 @@ export class Configuration {
 
     /** The path to the isle-analyzer executable. */
     get serverPath(): string {
-        const defaultName = 'isle-analyzer';
+
         let serverPath = this.configuration.get<string>('server.path', defaultName);
         if (serverPath.length === 0) {
             // The default value of the `server.path` setting is 'isle-analyzer'.
@@ -50,5 +53,13 @@ export class Configuration {
         }
 
         return Path.resolve(serverPath);
+    }
+
+    externalDependencies(): string[] {
+        const d = this.configuration.get<string[]>('external.dependencies',);
+        if (d === undefined) {
+            return [];
+        }
+        return d;
     }
 }

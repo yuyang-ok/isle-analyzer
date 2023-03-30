@@ -2,5 +2,7 @@
     "cSpell.words": [
         "funs"
     ],
-    "rust-analyzer.checkOnSave": true
+    "rust-analyzer.checkOnSave": true,
+    "rust-analyzer.cargo.extraArgs": ["--offline"]
+
 }

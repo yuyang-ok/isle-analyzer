@@ -7,8 +7,6 @@
 (type i32 (primitive i32))
 
 
-
-
 ;; Our high-level, RISC-y input IR.
 (type HighLevelInst
   (enum 

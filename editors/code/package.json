@@ -50,6 +50,11 @@
 					"default": "isle-analyzer",
 					"markdownDescription": "Path and filename of the isle-analyzer executable, e.g. `/usr/bin/isle-analyzer`."
 				},
+				"isle-analyzer.external.dependencies": {
+					"type": "array",
+					"default": [],
+					"markdownDescription": "ISLE external list of absolute path dependencies."
+				},
 				"isle-analyzer.trace.server": {
 					"type": "string",
 					"scope": "window",
