@@ -15,12 +15,6 @@ use lsp_server::*;
 use lsp_types::*;
 use std::vec;
 
-/// Return a list of completion items corresponding to each one of Move's keywords.
-///
-/// Currently, this does not filter keywords out based on whether they are valid at the completion
-/// request's cursor position, but in the future it ought to. For example, this function returns
-/// all specification language keywords, but in the future it should be modified to only do so
-/// within a spec block.
 fn keywords() -> Vec<CompletionItem> {
     super::KEYWORDS
         .iter()

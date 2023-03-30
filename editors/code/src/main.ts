@@ -72,7 +72,7 @@ async function serverVersion(context: Readonly<Context>): Promise<void> {
 
 async function reload(context: Readonly<Context>): Promise<void> {
   const isle_files = new Array<string>();
-  const d_arr = context.configuration.externalDependencies();
+  const d_arr = context.configuration.isleIncludes();
   const d_set = new Set<string>();
   d_arr.forEach((e) => {
     d_set.add(e);

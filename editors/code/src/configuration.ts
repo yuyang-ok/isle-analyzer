@@ -55,8 +55,8 @@ export class Configuration {
         return Path.resolve(serverPath);
     }
 
-    externalDependencies(): string[] {
-        const d = this.configuration.get<string[]>('external.dependencies');
+    isleIncludes(): string[] {
+        const d = this.configuration.get<string[]>('include');
         if (d === undefined) {
             return [];
         }
