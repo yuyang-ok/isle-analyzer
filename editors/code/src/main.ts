@@ -79,7 +79,7 @@ async function reload(context: Readonly<Context>): Promise<void> {
   });
   traverseDir(workSpaceDir(), (e) => {
     if (e.is_file && e.path.endsWith('.isle')) {
-      if (d_set.has(e.path) == false) {
+      if (!d_set.has(e.path)) {
         isle_files.push(e.path);
       }
     }
@@ -105,7 +105,6 @@ async function reload(context: Readonly<Context>): Promise<void> {
   d_set.forEach((e) => {
     isle_files2.push(e);
   });
-
   const client = context.getClient();
   if (client !== undefined) {
     void client.sendRequest('isle/reload', { 'files': isle_files2 });

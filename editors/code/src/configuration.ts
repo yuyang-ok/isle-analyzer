@@ -56,7 +56,7 @@ export class Configuration {
     }
 
     externalDependencies(): string[] {
-        const d = this.configuration.get<string[]>('external.dependencies',);
+        const d = this.configuration.get<string[]>('external.dependencies');
         if (d === undefined) {
             return [];
         }

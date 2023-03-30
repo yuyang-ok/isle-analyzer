@@ -2,10 +2,10 @@
 	"name": "isle-analyzer",
 	"displayName": "isle-analyzer",
 	"description": "A language server and basic grammar for the isle programming language.",
-	"publisher": "yuyang",
+	"publisher": "isle-analyzer",
 	"icon": "images/isle.png",
 	"license": "Apache-2.0",
-	"version": "0.0.11",
+	"version": "0.1.0",
 	"preview": true,
 	"homepage": "https://github.com/yuyang-ok/isle-analyzer",
 	"repository": {

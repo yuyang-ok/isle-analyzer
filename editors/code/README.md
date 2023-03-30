@@ -14,10 +14,18 @@ This is a `IDE` support for ISLE language.
 * auto completion
 * diagnose information
 
-## Check the video below to see how to use
+## How to use
 
+
+install plugin from marketplace.
+
+<https://marketplace.visualstudio.com/items?itemName=isle-analyzer.isle-analyzer>
+
+install LSP server via
+~~~
+cargo install --git  https://github.com/yuyang-ok/isle-analyzer isle-analyzer
+~~~
 
 
 ## RoadMap
-
-    -[  ] formatter
+* formatter
