@@ -236,6 +236,7 @@ impl ItemOrAccessHandler for Handler {
                                 ..Default::default()
                             })
                         });
+                        push_completion_items(self, items);
                     }
                 };
             }
