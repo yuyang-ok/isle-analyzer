@@ -195,6 +195,7 @@ impl Project {
                                 let item = ItemOrAccess::Item(Item::Var {
                                     name: name.clone(),
                                     ty: ty,
+                                    has_decl_type: false,
                                 });
                                 handler.handle_item_or_access(self, &item);
                                 self.context.enter_item(name.0.clone(), item)
@@ -360,6 +361,7 @@ impl Project {
                         let item = ItemOrAccess::Item(Item::Var {
                             name: var.clone(),
                             ty,
+                            has_decl_type: false,
                         });
                         handler.handle_item_or_access(self, &item);
                         self.context.enter_item(var.0.clone(), item);
@@ -492,6 +494,7 @@ impl Project {
                         let item = ItemOrAccess::Item(Item::Var {
                             name: d.var.clone(),
                             ty: d.ty.clone(),
+                            has_decl_type: true,
                         });
                         handler.handle_item_or_access(self, &item);
                         if handler.finished() {

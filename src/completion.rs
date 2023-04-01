@@ -356,7 +356,7 @@ impl VisitContext {
         ),
     ) {
         self.innert_most(|x| match x {
-            Item::Var { name, ty } => call_back(name, ty),
+            Item::Var { name, ty, .. } => call_back(name, ty),
             _ => {}
         })
     }

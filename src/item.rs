@@ -41,8 +41,10 @@ pub enum Item {
     },
     Var {
         name: Ident,
-        // the location define the Type.
+        /// the location define the Type.
         ty: Ident,
+        ///
+        has_decl_type: bool,
     },
     EnumMemberName {
         name: Ident,
@@ -79,7 +81,7 @@ impl Item {
             Item::Decl { decl, kind: _ } => (decl.term.1, decl.term.0.len() as u32),
             Item::Dummy => (UNKNOWN_POS, 0),
             Item::Const { name, ty: _ } => (name.1, 0),
-            Item::Var { name, ty: _ } => (name.1, name.0.len() as u32),
+            Item::Var { name, ty: _, .. } => (name.1, name.0.len() as u32),
             Item::EnumMemberName { name } => (name.1, name.0.len() as u32),
             Item::EnumMemberField { name } => (name.1, name.0.len() as u32),
             Item::EnumVariant { v } => (v.name.1, v.name.0.len() as u32),
@@ -170,7 +172,7 @@ impl std::fmt::Display for Item {
             Item::Decl { decl, kind: _ } => write!(f, "item_decl:{}", decl.term.0.as_str()),
             Item::Dummy => write!(f, "dummy"),
             Item::Const { name, ty: _ } => write!(f, "item_const:{}", name.0.as_str()),
-            Item::Var { name, ty: _ } => write!(f, "item_var:{}", name.0.as_str()),
+            Item::Var { name, ty: _, .. } => write!(f, "item_var:{}", name.0.as_str()),
             Item::EnumMemberName { name } => write!(f, "enum_member:{}", name.0.as_str()),
             Item::EnumMemberField { name } => write!(f, "enum_field:{}", name.0.as_str()),
             Item::EnumVariant { v } => write!(f, "enum_variant:{}", v.name.0),

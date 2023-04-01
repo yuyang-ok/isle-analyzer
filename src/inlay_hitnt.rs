@@ -58,7 +58,11 @@ impl ItemOrAccessHandler for Handler {
     fn handle_item_or_access(&mut self, p: &Project, item: &ItemOrAccess) {
         match item {
             ItemOrAccess::Item(item) => match item {
-                Item::Var { name, ty } => {
+                Item::Var {
+                    name,
+                    ty,
+                    has_decl_type: false,
+                } => {
                     let name_loc = self.in_range(p, name);
                     if let Some(name_loc) = name_loc {
                         self.reuslts.push(mk_inlay_hits(
