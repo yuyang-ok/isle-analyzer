@@ -171,7 +171,7 @@ impl Project {
         self.visit(provider, handler);
     }
 
-    fn mk_file_paths(&self) -> Vec<PathBuf> {
+    pub(crate) fn mk_file_paths(&self) -> Vec<PathBuf> {
         self.defs
             .filenames
             .iter()

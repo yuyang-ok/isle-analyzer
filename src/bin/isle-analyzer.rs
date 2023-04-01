@@ -5,7 +5,7 @@ use crossbeam::channel::select;
 use isle_analyzer::reload;
 use isle_analyzer::{
     completion::on_completion_request, context::*, document_symbol, goto_definition, hover,
-    inlay_hitnt, project::Project, references, rename::on_rename, semantic_tokens,
+    inlay_hitnt, project::Project, references, rename::on_rename, semantic_tokens, show_rust_code,
 };
 use log::*;
 use lsp_types::notification::Notification;
@@ -184,6 +184,9 @@ fn on_request(context: &mut Context, request: &lsp_server::Request) {
         "isle/reload" => {
             reload::on_reload(context, request);
             send_diag(context);
+        }
+        "isle/show_compiled_code" => {
+            show_rust_code::on_show_compiled_code(context, request);
         }
         _ => log::error!("handle request '{}' from client", request.method),
     }

@@ -21,6 +21,7 @@ pub mod references;
 pub mod reload;
 pub mod rename;
 pub mod semantic_tokens;
+pub mod show_rust_code;
 pub mod utils;
 use std::collections::HashSet;
 

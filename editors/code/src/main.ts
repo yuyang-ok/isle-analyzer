@@ -169,6 +169,31 @@ export async function activate(
     const t = await vscode.workspace.openTextDocument(loc.fpath);
     await vscode.window.showTextDocument(t, { selection: loc.range, preserveFocus: false });
   });
+  context.registerCommand('isle.show.compiled.code', () => {
+    const client = context.getClient();
+    if (client === undefined) {
+      return;
+    }
+    const d = vscode.window.activeTextEditor;
+    if (d === undefined) {
+      return;
+    }
+
+    const fpath = d.document.uri.path;
+    const line = d.selection.active.line;
+    const col = d.selection.active.character;
+    client.sendRequest<{
+      range: vscode.Range,
+      result: string,
+    }>('isle/show_compiled_code', { "fpath": fpath, "line": line, "col": col }).then((r) => {
+      void vscode.workspace.openTextDocument({ language: "rust", content: r.result }).then((e) => {
+        void vscode.window.showTextDocument(e, { selection: r.range });
+      });
+    }).catch((e) => {
+      void vscode.window.showErrorMessage('get compiled code failed:' + (e as string));
+    });
+
+  });
 
   const d = vscode.languages.registerInlayHintsProvider({ scheme: 'file', language: 'isle' },
     {

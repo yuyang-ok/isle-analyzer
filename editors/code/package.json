@@ -39,6 +39,11 @@
 				"command": "isle-analyzer.reload",
 				"title": "Reload ISLE project",
 				"category": "ISLE Analyzer"
+			},
+			{
+				"command": "isle-analyzer.isle.show.compiled.code",
+				"title": "Show compiled code",
+				"category": "ISLE Analyzer"
 			}
 		], 
 		"configuration": {
@@ -93,7 +98,14 @@
 				{
 					"command": "isle-analyzer.reload"
 				}
-			]
+			],
+			"editor/context" : [
+				{
+					"when": "resourceLangId == isle",
+					"command": "isle-analyzer.isle.show.compiled.code",
+					"group": "5_cutcopypaste"
+				}
+			] 
 		} 
 	},
 	"scripts": {

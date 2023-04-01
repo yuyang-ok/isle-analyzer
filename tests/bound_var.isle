@@ -3,6 +3,6 @@
 
 (decl A (u32 u32) u32)
 
-(extractor (A various)
+(rule (A _ _ )
     100
 )
