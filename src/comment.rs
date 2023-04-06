@@ -28,7 +28,7 @@ impl CommentExtrator {
         const NEW_LINE: u8 = 10;
         const SEMI_COLON: u8 = 59;
         let mut comments = Vec::new();
-        let mut comment = String::new();
+        let mut comment = Vec::new();
         let last_index = content.as_bytes().len() - 1;
         for (index, c) in content.as_bytes().iter().enumerate() {
             match state {
@@ -56,24 +56,24 @@ impl CommentExtrator {
                 State::Comment => {
                     if *c == NEW_LINE || index == last_index {
                         if *c != NEW_LINE {
-                            comment.push(*c as char);
+                            comment.push(*c);
                         }
                         // ending
                         let col_ = col - (comment.len() as u32);
                         comments.push(Comment {
                             line,
                             col: col_,
-                            content: comment.clone(),
+                            content: String::from_utf8(comment.clone()).unwrap(),
                         });
                         line += 1;
                         col = 0;
-                        comment = String::new();
+                        comment = Vec::new();
                         state = State::Init;
                     } else if *c == SEMI_COLON {
                         // nothing.
                         col += 1;
                     } else {
-                        comment.push(*c as char);
+                        comment.push(*c);
                         col += 1;
                     }
                 }

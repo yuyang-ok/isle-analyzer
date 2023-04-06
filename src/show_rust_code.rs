@@ -70,7 +70,7 @@ struct Req {
     col: u32,
 }
 
-#[derive(Clone, serde::Serialize)]
+#[derive(Clone, serde::Serialize, Debug)]
 pub struct CompileResultAndPos {
     result: String,
     range: lsp_types::Range,
@@ -115,13 +115,7 @@ fn from_files<P: AsRef<Path>>(
 #[cfg(test)]
 #[test]
 fn xxx() {
-    let x = from_files(
-        vec![Path::new(
-            "/Users/yuyang/projects/isle-analyzer/tests/bound_var.isle",
-        )],
-        "A".to_string(),
-    )
-    .unwrap();
+    let x = from_files(vec![Path::new("./tests/bound_var.isle")], "A".to_string()).unwrap();
 
-    eprintln!("{}", x);
+    eprintln!("{:?}", x);
 }
