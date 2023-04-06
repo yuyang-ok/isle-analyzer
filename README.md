@@ -6,4 +6,4 @@ Thanks again.
 
 
 ## License
-Move is licensed as [Apache 2.0](https://github.com/yuyang-ok/isle-analyzer/blob/main/LICENSE).
+This project is licensed as [Apache 2.0](https://github.com/yuyang-ok/isle-analyzer/blob/main/LICENSE).
