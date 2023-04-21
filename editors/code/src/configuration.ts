@@ -55,8 +55,8 @@ export class Configuration {
         return Path.resolve(serverPath);
     }
 
-    isleIncludes(): string[] {
-        const d = this.configuration.get<string[]>('include');
+    isleFiles(): string[] {
+        const d = this.configuration.get<string[]>('files');
         if (d === undefined) {
             return [];
         }

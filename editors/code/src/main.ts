@@ -6,45 +6,9 @@ import { Configuration } from './configuration';
 import { Context } from './context';
 import { Extension } from './extension';
 import { log } from './log';
-import * as fs from 'fs';
-import * as path from 'path';
 
 import * as childProcess from 'child_process';
 import * as vscode from 'vscode';
-class TraverseDirItem {
-  path: string;
-
-  is_file: boolean;
-
-  constructor(path: string,
-    is_file: boolean) {
-    this.path = path;
-    this.is_file = is_file;
-  }
-}
-
-function traverseDir(dir: any, call_back: (path: TraverseDirItem) => void): void {
-  fs.readdirSync(dir).forEach(file => {
-    const fullPath = path.join(dir, file);
-    if (fs.lstatSync(fullPath).isDirectory()) {
-      call_back(new TraverseDirItem(fullPath, false));
-      traverseDir(fullPath, call_back);
-    } else {
-      call_back(new TraverseDirItem(fullPath, true));
-    }
-  });
-}
-
-function workSpaceDir(): string | undefined {
-  if (vscode.workspace.workspaceFolders !== undefined) {
-    if (vscode.workspace.workspaceFolders[0] !== undefined) {
-      const f = vscode.workspace.workspaceFolders[0].uri.fsPath;
-      return f;
-    }
-  }
-  return undefined;
-}
-
 
 /**
  * An extension command that displays the version of the server that this extension
@@ -70,44 +34,13 @@ async function serverVersion(context: Readonly<Context>): Promise<void> {
 }
 
 
-async function reload(context: Readonly<Context>): Promise<void> {
-  const isle_files = new Array<string>();
-  const d_arr = context.configuration.isleIncludes();
-  const d_set = new Set<string>();
-  d_arr.forEach((e) => {
-    d_set.add(e);
-  });
-  traverseDir(workSpaceDir(), (e) => {
-    if (e.is_file && e.path.endsWith('.isle')) {
-      if (!d_set.has(e.path)) {
-        isle_files.push(e.path);
-      }
-    }
-  });
-  const isle_files_pick_items = new Array<vscode.QuickPickItem>();
-  isle_files.forEach((e) => {
-    isle_files_pick_items.push({ label: e, picked: true });
-  });
-  const isle_picked = await vscode.window.showQuickPick(isle_files_pick_items, {
-    canPickMany: true,
-    title: 'Select ISLE file you want to include Project.',
-  });
-  if (isle_picked === undefined || isle_picked.length === 0) {
-    void vscode.window.showInformationMessage(
-      'You din\'t pick ISLE files,we can try reload ISLE files later.',
-    );
-    return;
-  }
-  const isle_files2 = new Array<string>();
-  isle_picked.forEach((e) => {
-    isle_files2.push(e.label);
-  });
-  d_set.forEach((e) => {
-    isle_files2.push(e);
-  });
+function reload(context: Readonly<Context>) {
+  const isle_files = context.configuration.isleFiles();
   const client = context.getClient();
   if (client !== undefined) {
-    void client.sendRequest('isle/reload', { 'files': isle_files2 });
+    client.sendRequest('isle/reload', { 'files': isle_files }).catch((e) => {
+      void vscode.window.showErrorMessage('load project failed:' + (e as string));
+    });
   }
 }
 
@@ -183,10 +116,10 @@ export async function activate(
     const line = d.selection.active.line;
     const col = d.selection.active.character;
     client.sendRequest<{
-      range: vscode.Range,
-      result: string,
-    }>('isle/show_compiled_code', { "fpath": fpath, "line": line, "col": col }).then((r) => {
-      void vscode.workspace.openTextDocument({ language: "rust", content: r.result }).then((e) => {
+      range: vscode.Range;
+      result: string;
+    }>('isle/show_compiled_code', { 'fpath': fpath, 'line': line, 'col': col }).then((r) => {
+      void vscode.workspace.openTextDocument({ language: 'rust', content: r.result }).then((e) => {
         void vscode.window.showTextDocument(e, { selection: r.range });
       });
     }).catch((e) => {
@@ -215,7 +148,7 @@ export async function activate(
   // All other utilities provided by this extension occur via the language server.
   await context.startClient();
 
-  void reload(context);
+  reload(context);
 
 
 }

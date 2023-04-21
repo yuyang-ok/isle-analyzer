@@ -190,14 +190,21 @@ impl Project {
         let file_paths = self.mk_file_paths();
         // parse
         // construct a special `Lexer`.
-        let _filepath = self.mk_file_paths();
-        let lexer = Lexer::from_files_read(file_paths, |p2| {
-            std::io::Result::Ok(if p2 == p.as_path() {
-                content.to_string()
-            } else {
-                "".to_string()
+        let files: Vec<_> = file_paths
+            .iter()
+            .map(|x| {
+                (
+                    x.clone(),
+                    if x == p {
+                        content.to_string()
+                    } else {
+                        "".to_string()
+                    },
+                )
             })
-        })?;
+            .collect();
+
+        let lexer = Lexer::from_file_contents(files)?;
         let defs = parse(lexer.clone())?;
 
         // insert into `defs`.
