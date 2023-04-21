@@ -27,12 +27,13 @@ pub fn on_reload(context: &mut Context, request: &Request) {
         }
     };
     context.project = p;
+    let r = Response::new_ok(request.id.clone(), serde_json::to_value("Load Ok").unwrap());
     context
         .connection
         .sender
         .send(Message::Response(Response {
             id: request.id.clone(),
-            result: None,
+            result: Some(serde_json::to_value(r).unwrap()),
             error: None,
         }))
         .unwrap();

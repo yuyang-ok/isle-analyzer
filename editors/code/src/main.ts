@@ -39,7 +39,7 @@ function reload(context: Readonly<Context>) {
   const client = context.getClient();
   if (client !== undefined) {
     client.sendRequest('isle/reload', { 'files': isle_files }).catch((e) => {
-      void vscode.window.showErrorMessage('load project failed:' + (e as string));
+      void vscode.window.showErrorMessage('load project failed1111:' + (e as string));
     });
   }
 }
@@ -95,7 +95,6 @@ export async function activate(
 
   // Register handlers for VS Code commands that the user explicitly issues.
   context.registerCommand('serverVersion', serverVersion);
-  context.registerCommand('reload', reload);
 
   context.registerCommand('goto_definition', async (_context, ...args) => {
     const loc = args[0] as { range: vscode.Range; fpath: string };
