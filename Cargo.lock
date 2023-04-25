@@ -182,7 +182,7 @@ checksum = "e496a50fda8aacccc86d7529e2c1e0892dbd0f898a6b5645b5561b89c3210efa"
 [[package]]
 name = "cranelift-isle"
 version = "0.96.0"
-source = "git+https://github.com/yuyang-ok/wasmtime?branch=fix_col#9c253b00b9245abd8edc09d1a50862609265c760"
+source = "git+https://github.com/bytecodealliance/wasmtime?branch=main#a1732b2906d79033ff9266ac391a9783ac6daa27"
 
 [[package]]
 name = "crossbeam"
